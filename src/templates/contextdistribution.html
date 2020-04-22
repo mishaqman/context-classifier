@@ -1,0 +1,86 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<form method="POST" action="{{url_for('contextdistribution')}}" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        <legend>Get context distribution for a sentence</legend>
+
+        <div class="form-group">
+            {% if form.sentence.errors %}
+                {{ form.sentence(class="form-control form-control-md is-invalid", placeholder = 'Domain sentence', autofocus = 'autofocus') }}
+                <div class="invalid-feedback">
+                    {% for error in form.sentence.errors %}
+                        <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {{ form.sentence(class="form-control form-control-md", placeholder = 'Domain sentence', autofocus = 'autofocus') }}
+            {% endif %}
+        </div>
+
+        
+    </div>
+    <div class="form-group">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
+</form>
+
+{% if answer %}
+
+<legend>Context distribution</legend>
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">Context</th>
+      <th style="width: auto;" scope="col">Cos similarity</th>
+    </tr>
+  </thead>
+
+  {% for i in data %}
+  <tbody>
+    
+    <tr>
+      <td>{{i[0]}}</td>
+      <td>{{i[1]}}</td>
+    </tr>
+    
+  </tbody>
+  {% endfor %}
+
+</table>
+
+
+<legend>Your cosine similar sentences</legend>
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">Label</th>
+      <th style="min-width: 8rem;" scope="col">Cos similarity</th>
+      <th style="min-width: 18rem;" scope="col">Context</th>
+    </tr>
+  </thead>
+
+  {% for item in sentences %}
+  <tbody>
+    
+    <tr>
+      <td>{{item[0].text}}</td>
+      <td>{{item[1]}}</td>
+      <td>{{item[0].context.name}}</td>
+    </tr>
+    
+  </tbody>
+  {% endfor %}
+
+</table>
+
+{% endif %}
+
+
+
+
+
+{% endblock content %}
+

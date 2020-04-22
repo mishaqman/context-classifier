@@ -1,0 +1,36 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<form method="POST" action="{{url_for('domains')}}" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        <legend>Create a domain</legend>
+
+        <div class="form-group">
+            {% if form.name.errors %}
+                {{ form.name(class="form-control form-control-md is-invalid", placeholder = 'Domain Name', autofocus = 'autofocus') }}
+                <div class="invalid-feedback">
+                    {% for error in form.name.errors %}
+                        <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {{ form.name(class="form-control form-control-md", placeholder = 'Domain Name', autofocus = 'autofocus') }}
+            {% endif %}
+        </div>
+
+        
+    </div>
+    <div class="form-group">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
+</form>
+
+{% for domain in domains %}
+<a href="{{url_for('domain', domainid = domain.id)}}">{{ domain.name }}</a>
+
+{% endfor %}
+
+{% endblock content %}
+
