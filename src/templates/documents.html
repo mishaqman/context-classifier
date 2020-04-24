@@ -1,0 +1,26 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<form method="POST" action="{{url_for('documents')}}" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        <legend>Upload your documents</legend>
+
+        <div class="form-group">
+            {{ form.files(class="form-control-file col-md") }}
+            {% if form.files.errors %}
+                {% for error in form.files.errors %}
+                    <span class="text-danger">{{ error }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
+        
+    </div>
+    <div class="form-group">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
+</form>
+
+{% endblock content %}
+

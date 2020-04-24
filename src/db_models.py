@@ -59,3 +59,18 @@ class Sentparadoc(db.Model):
     paraid = db.Column(db.Integer, nullable=False)
     docid = db.Column(db.Integer, db.ForeignKey('document.id'), nullable=False)
     senttext = db.Column(db.String(1000), nullable=False)
+    sentterms = db.relationship('Sentterm', backref='sentparadoc', lazy=True)
+
+
+class Term(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    label = db.Column(db.String(1000), nullable=False)
+    entity = db.Column(db.Boolean, default=False, nullable=False)
+    fake = db.Column(db.Boolean, default=False, nullable=False)
+    sentterms = db.relationship('Sentterm', backref='term', lazy=True)
+
+
+class Sentterm(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sentparadocid = db.Column(db.Integer, db.ForeignKey('sentparadoc.id'), nullable=False)
+    termid = db.Column(db.Integer, db.ForeignKey('term.id'), nullable=False)

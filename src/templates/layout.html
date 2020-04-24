@@ -26,6 +26,7 @@
 
         <a id="topbar-items" class="nav-link nav-item" href="{{url_for('domains')}}">Domains</a>
         <a id="topbar-items" class="nav-link nav-item" href="{{url_for('contextdistribution')}}">CDist</a>
+        <a id="topbar-items" class="nav-link nav-item" href="{{url_for('documents')}}">Docs</a>
       </ul>
     </div>
 
@@ -54,11 +55,12 @@
 <!-- lef panel -->
 
       <div class="col-sm-3" id="left-panel">
-        <h5>Domains</h5>
+        <h5>Documents</h5>
         <br>
-          {% for domain in domains %}
+          {% for document in documents %}
             <div class="card-text" style="background: none">
-             <a style="color: black;" href="{{url_for('domain', domainid = domain.id)}}">{{domain.name}}</a><br>
+             <a style="color: black;" href="{{url_for('document', docid=document.id, doctitle=document.title)}}">{{document.title.split('.')[0]}}</a><br>
+             
             </div>
           {% endfor %}
       </div>

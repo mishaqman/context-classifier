@@ -27,10 +27,18 @@
     </div>
 </form>
 
-{% for domain in domains %}
-<a href="{{url_for('domain', domainid = domain.id)}}">{{ domain.name }}</a>
+          {% for domain in domains %}
+            <div class="card-text" style="background: none">
+             <a style="color: black;" href="{{url_for('domain', domainid = domain.id)}}">{{domain.name}}</a><br>
+             <form style="float: right; margin-top: -1.3rem;" method="post" action="{{url_for('domain_delete')}}">
+                <input type="hidden" name="domainid" value="{{domain.id}}">
+                <button type="submit" style="border: 0; background: none;">
+                  <i class="fa fa-trash-o"></i>
+                </button>
+              </form>
+            </div>
+          {% endfor %}
 
-{% endfor %}
 
 {% endblock content %}
 

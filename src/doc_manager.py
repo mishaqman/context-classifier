@@ -42,15 +42,27 @@ class DocManager:
         return all_embeddings
 
 
-    def cos_sim(self,user_query,sent_embeds):
-        cos_sim = []
+    def cos_sim(self,user_query,sent_embeds, top=10):
+        retval = []
         query_embed = self.model(user_query)
         for sent_embed in sent_embeds:
             sim = int(float(1 - distance.cosine(query_embed,sent_embed[1]))*10000)/10000
-            cos_sim.append((sent_embed[0], sim))
-        cos_sim = sorted(cos_sim, key = lambda x:x[1], reverse=True)[:25]
-        return cos_sim
+            retval.append((sent_embed[0], sim))
+        retval = sorted(retval, key = lambda x:x[1], reverse=True)[:top]
+        return retval
 
-
-
+    def doc_cos_sim(self, doc_sentid_embeds, model_sentid_embeds,top=10):
+        retval = []
+        for doc_sentid_embed in doc_sentid_embeds:
+            for model_sentid_embed in model_sentid_embeds:
+                sim = float(1 - distance.cosine(doc_sentid_embed[1],model_sentid_embed[1]))
+                retval.append((doc_sentid_embed[0], model_sentid_embed[0], sim))
+        retval = sorted(retval, key = lambda x:(x[0],-1*x[2]))
+        new = []
+        count = {}
+        for tup in retval:
+            count[tup[0]] = count.get(tup[0],0) + 1
+            if count[tup[0]] <= top:
+                new.append(tup)
+        return new
 

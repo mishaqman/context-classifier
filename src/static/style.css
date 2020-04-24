@@ -62,3 +62,29 @@ body {
 	padding: 0.2rem 0.2rem;
 	border-radius: 0.25rem;
 }
+
+#term {
+	display: inline-block;
+	color: black;
+	text-align: center;
+	vertical-align: middle;
+	background-color: #b9cfeb;
+	border: 1px solid transparent;
+	padding: 0.2rem 0.2rem;
+	margin: 0.2rem;
+	line-height: 1.2;
+	border-radius: 0.25rem;
+}
+
+#entity {
+	display: inline-block;
+	color: black;
+	text-align: center;
+	vertical-align: middle;
+	background-color: #f2c69d;
+	border: 1px solid transparent;
+	padding: 0.2rem 0.2rem;
+	margin: 0.2rem;
+	line-height: 1.2;
+	border-radius: 0.25rem;
+}

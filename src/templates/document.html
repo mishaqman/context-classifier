@@ -1,0 +1,50 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+
+<div>
+<legend>{{document.title}}</legend>
+	<form style="float: right; margin-top: -1.3rem;" method="post" action="{{url_for('doc_delete')}}">
+	    <input type="hidden" name="docid" value="{{document.id}}">
+	    <button type="submit" style="border: 0; background: none;">
+	      <i class="fa fa-trash-o"></i>
+	    </button>
+    </form>
+</div>
+
+<small>{{document.date.strftime('%d %b %Y')}} <i>by</i> {{document.user.username}}</small>
+
+<br><br>
+
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">ParaID</th>
+      <th style="width: auto;" scope="col">Sentence</th>
+      <th style="width: auto;" scope="col"><a id="term">Terms</a><a id="entity">Entities</a></th>
+    </tr>
+  </thead>
+
+  {% for sent in sentparadocs %}
+  <tbody>
+    <tr>
+      <td>{{sent.paraid}}</td>
+      <td>{{sent.senttext}}</td>
+      <td>{% for term in sent.sentterms %}
+      	{% if term.term.entity == False %}
+	        <a id="term" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
+        {% else %}
+    	    <a id="entity" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
+        {% endif %}
+      	
+      {% endfor %}</td>
+    </tr>
+  </tbody>
+  {% endfor %}
+</table>
+
+
+
+{% endblock content %}
+

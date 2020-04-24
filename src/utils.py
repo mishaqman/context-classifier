@@ -11,7 +11,6 @@ def read_text_file(file):
 def read_context_label_csv_file(file):
     retval = {}
     stream = io.StringIO(file.stream.read().decode("utf-8"), newline=None)
-    # stream = io.StringIO(unicode(file.read()), newline=None)
     infile = csv.reader(stream)
     # infile = list(csv.reader(open(file, mode = 'rb', encoding='utf8', errors='ignore'), delimiter = ',', quotechar = '"'))
     for row in infile:
