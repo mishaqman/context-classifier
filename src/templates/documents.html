@@ -22,5 +22,37 @@
     </div>
 </form>
 
+
+<legend>All Document Terms</legend>
+
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">Document</th>
+      <th style="width: auto;" scope="col">Total terms</th>
+      <th style="width: auto;" scope="col">Total entities</th>
+      <th style="width: auto;" scope="col">Total deleted terms</th>
+      <th style="width: auto;" scope="col">Total deleted entities</th>
+    </tr>
+  </thead>
+
+  {% for doc, total in data.items() %}
+  <tbody>
+    
+    <tr>
+      <td>{{doc}}</td>
+      <td>{{total[0]}}</td>
+      <td>{{total[1]}}</td>
+      <td>{{total[2]}}</td>
+      <td>{{total[3]}}</td>
+
+    </tr>
+    
+  </tbody>
+  {% endfor %}
+
+</table>
+
+
 {% endblock content %}
 

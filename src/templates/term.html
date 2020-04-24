@@ -6,40 +6,39 @@
 <div>
 <legend>{{term.label}}</legend>
 <small>Term ID <i>{{term.id}}</i></small><br>
-<small>Frequency <i>{{frequency}}</i></small><br>
+
+
+{% if term.fake %}
+<small>Status <i>Fake</i></small><br>
+  {% else %}
+<small>Status <i>Legit</i></small><br>
+{% endif %}
+
+<small>Total Frequency <i>{{ term.sentterms | length }}</i></small><br>
+
 <small>Documents</small>
+
 {% for doc, freq in termdocs.items() %}
-{{doc, freq}}
+{{[doc.split('.')[0], freq]}}
 {% endfor%}
 
-
-{% endblock content %}
-
+<h6 style="margin-top: 1rem;">Related Terms</h6>
 
 
-
-
-
-
-
-
-<h6>Operational Risk Relevance</h6>
-
-<legend>Context distribution</legend>
 <table class="table">
   <thead class="thead-light">
     <tr>
-      <th style="width: auto;" scope="col">Context</th>
-      <th style="width: auto;" scope="col">Cos similarity</th>
+      <th style="width: auto;" scope="col">Related Term</th>
+      <th style="width: auto;" scope="col">Frequency</th>
     </tr>
   </thead>
 
-  {% for i in data %}
+  {% for term, freq in related_terms.items() %}
   <tbody>
     
     <tr>
-      <td>{{i[0]}}</td>
-      <td>{{i[1]}}</td>
+      <td>{{term}}</td>
+      <td>{{freq}}</td>
     </tr>
     
   </tbody>
@@ -47,10 +46,6 @@
 
 </table>
 
-  <form style="float: right; margin-top: -1.3rem;" method="post" action="{{url_for('term')}}">
-    <input type="hidden" name="termid" value="{{term.id}}">
-    <button type="submit" style="border: 0; background: none;">
-      <i class="fa fa-trash-o"></i>
-    </button>
-  </form>
-  </div>
+{% endblock content %}
+
+

@@ -26,7 +26,7 @@ class Chunking:
             akin alike regarding corresponding like said similar such suchlike
             that abounding countless manifold multiplied several umpteen uncounted
             varied various many many-sided unlike very other only less same few
-            certain this be have include become do
+            certain this be have include become do relevant 
             """.split())
 
         self.tokens_with_no_prefix_space = [',',';','.',"'s",':',')',']','}','%','-','?']

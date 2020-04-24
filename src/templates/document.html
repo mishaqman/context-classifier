@@ -32,10 +32,12 @@
       <td>{{sent.paraid}}</td>
       <td>{{sent.senttext}}</td>
       <td>{% for term in sent.sentterms %}
-      	{% if term.term.entity == False %}
-	        <a id="term" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
+        {% if (not term.term.removed) and (not term.term.fake) %}
+      	{% if term.term.entity %}
+          <a id="entity" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
         {% else %}
-    	    <a id="entity" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
+          <a id="term" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
+        {% endif %}
         {% endif %}
       	
       {% endfor %}</td>

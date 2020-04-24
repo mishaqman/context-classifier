@@ -273,10 +273,24 @@ class Documents(Resource):
         self.form = forms.DocUploadForm()
 
     def get(self):
-        return make_response(render_template('documents.html', form = self.form, documents = self.documents, sents = self.sents))
+
+        data = {}
+        for document in self.documents:
+            if document.title not in data:
+                data[document.title] = {}
+            total_sents = db_models.Sentparadoc.query.filter_by(docid = document.id).all()
+            terms = db_models.Sentterm.query.filter(db_models.Sentterm.sentparadocid.in_([i.id for i in total_sents])).all()
+            total_legit_terms = len([i for i in terms if i.term.entity == False and (i.term.fake == False or i.term.removed == False)])
+            total_legit_entities = len([i for i in terms if i.term.entity == True and (i.term.fake == False or i.term.removed == False)])
+            total_fake_terms = len([i for i in terms if i.term.entity == False and (i.term.fake == True or i.term.removed == True)])
+            total_fake_entities = len([i for i in terms if i.term.entity == True and (i.term.fake == True or i.term.removed == True)])
+            data[document.title] = [total_legit_terms, total_legit_entities, total_fake_terms, total_fake_entities]
+
+
+        return make_response(render_template('documents.html', form = self.form, documents = self.documents, sents = self.sents, data = data))
 
     def post(self):
-        
+        starttime = datetime.now()
         global manager
         if manager is None:
             manager = doc_manager.DocManager(use_model)
@@ -348,13 +362,12 @@ class Documents(Resource):
 
         outfile = open('{}{}_{}_sentids_embeds.pkl'.format(sentids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
         pickle.dump(all_user_sentids_embeddings,outfile)
-        print('file uploaded')
         os.chdir(sentids_embeds_filedir)
         toberemoved = sorted(os.listdir(sentids_embeds_filedir), key=os.path.getmtime)
         toberemoved = [i for i in toberemoved if str(i.split('_')[0])==current_user.username][:-1]
         for file in toberemoved:
             os.remove(file)
-
+        flash('Document uploaded in {} seconds'.format((datetime.now()-starttime).seconds), 'success')
         return redirect(request.url)
 
 
@@ -386,6 +399,20 @@ class Document(Resource):
         return make_response(render_template('document.html', document = document, documents = self.documents, sentparadocs = sentparadocs))
 
 
+class Terms(Resource):
+    def __init__(self):
+        self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
+
+
+    def get(self):
+        terms = db_models.Term.query.filter_by(removed=False).all()
+        removed_terms = db_models.Term.query.filter_by(removed=True).all()
+
+        return make_response(render_template('terms.html', documents = self.documents, terms = terms, removed_terms = removed_terms))
+
+
+
+
 class Term(Resource):
     def __init__(self):
         self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
@@ -395,13 +422,24 @@ class Term(Resource):
 
         term = db_models.Term.query.filter_by(id=termid).first()
         sentterms = db_models.Sentterm.query.filter_by(termid = term.id).all()
+
         termdocs = {}
         for sentterm in sentterms:
-            if sentterm.sentparadoc.document not in termdocs:
+            if sentterm.sentparadoc.document.title not in termdocs:
                 termdocs[sentterm.sentparadoc.document.title] = 1
             else:
                 termdocs[sentterm.sentparadoc.document.title] += 1
-        frequency = len([i for i in sentterms])
+
+        related_terms = {}
+
+        for sentterm in sentterms:
+            for item in sentterm.sentparadoc.sentterms:
+                if item.term.label not in related_terms:
+                    related_terms[item.term.label] = 1
+                else:
+                    related_terms[item.term.label] += 1
+
+        del related_terms[term.label]
 
         # global manager
         # if manager is None:
@@ -434,7 +472,7 @@ class Term(Resource):
         # self.data = {k:(utils.float_to_int(v/summ,4)) for k,v in self.data.items()}
         # self.data = sorted(self.data.items(), key = lambda x:x[1], reverse = True)[:3]
 
-        return make_response(render_template('term.html', term = term, documents = self.documents, frequency = frequency, sentterms = sentterms, termdocs = termdocs))
+        return make_response(render_template('term.html', term = term, documents = self.documents, sentterms = sentterms, termdocs = termdocs, related_terms = related_terms))
 
 
 
@@ -470,6 +508,24 @@ class DocDelete(Resource):
         return redirect(url_for('documents'))
 
 
+class TermDelete(Resource):
+    def post(self):
+        termid = request.form['termid']
+        term = db_models.Term.query.filter_by(id = termid).first()
+        term.removed = True
+        db_models.db.session.add(term)
+        db_models.db.session.commit()
+        return redirect(url_for('terms'))
+
+
+class TermUnDelete(Resource):
+    def post(self):
+        termid = request.form['termid']
+        term = db_models.Term.query.filter_by(id = termid).first()
+        term.removed = False
+        db_models.db.session.add(term)
+        db_models.db.session.commit()
+        return redirect(url_for('terms'))
 
 
 @app.route('/logout')
@@ -488,6 +544,9 @@ api.add_resource(Documents, '/documents', endpoint = 'documents')
 api.add_resource(Document, '/document/<int:docid>/<string:doctitle>', endpoint = 'document')
 api.add_resource(Term, '/term/<int:termid>', endpoint = 'term')
 api.add_resource(DocDelete,'/doc_delete', endpoint = 'doc_delete')
+api.add_resource(Terms, '/terms', endpoint = 'terms')
+api.add_resource(TermDelete,'/term_delete', endpoint = 'term_delete')
+api.add_resource(TermUnDelete,'/term_undelete', endpoint = 'term_undelete')
 
 
 if __name__ == '__main__':

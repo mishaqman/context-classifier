@@ -67,6 +67,7 @@ class Term(db.Model):
     label = db.Column(db.String(1000), nullable=False)
     entity = db.Column(db.Boolean, default=False, nullable=False)
     fake = db.Column(db.Boolean, default=False, nullable=False)
+    removed = db.Column(db.Boolean, default=False, nullable=False)
     sentterms = db.relationship('Sentterm', backref='term', lazy=True)
 
 
