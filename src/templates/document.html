@@ -27,7 +27,7 @@
   </thead>
 
 {% for sent in sentparadocs %}
-  {% if (sent.senttext|length > 40) and (sent.senttext|length <340) %}
+ {% if (sent.senttext | length > 40) and (sent.senttext | length < 300) %}
   <tbody>
     <tr>
       <td>{{sent.paraid}}</td>

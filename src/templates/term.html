@@ -2,24 +2,52 @@
 
 {% block content %}
 
-
-<legend>{{term.label}}</legend>
-
+{% if term.entity %}
+<legend id="entity">{{term.label}}</legend>
+{% else%}
+<legend id="term">{{term.label}}</legend>
+{% endif %}
 <!-- basic info related to a term -->
 
 <div>
-
-  <small>Term ID <i>{{term.id}}</i></small><br>
+  <small>Term ID <b>{{term.id}}</b></small><br>
 
   {% if term.fake %}
-  <small>Status <i>Fake</i></small><br>
+  <small>Status <b>Fake</b></small><br>
     {% else %}
-  <small>Status <i>Legit</i></small><br>
+  <small>Status <b>Legit</b></small><br>
   {% endif %}
 
-  <small>Total Frequency <i>{{ term.sentterms | length }}</i></small><br>
+{% if term_freq %}
+  <small>Frequency in user documents <b>{{ term_freq[2] }}</b></small><br>
+  <small>Universal frequency <b>{{term_freq[1]}}</b> as {{term_freq[0]}}</small><br>
+  <small>Relevance <b>{{term_freq[3]}}</b></small><br>
+
+{% endif %}
+
+<!-- operational risk relevance -->
+
+
+<h6 style="margin-top: 1rem;">
+  <span>
+    Operational Risk Relevance
+  </span>
+  <b>
+{% if (data[0][0] == 'NON') and (data[0][1] > 0.4) %}
+Not relevant
+{% else %}
+Relevant
+{% endif%}
+</b>
+</h6>
+
+{% for item in data %}
+
+<span id="context">{{item[0]}} <b>{{item[1]}}</b></span>
+{% endfor %}
 
 </div>
+
 
 
 <!-- list of documents, the term appears in -->
@@ -27,7 +55,7 @@
 <h6 style="margin-top: 1rem;">Documents</h6>
 
 {% for doc, freq in termdocs.items() %}
-  <a href="{{url_for('document', docid = doc.id, doctitle = doc.title)}}"><span id="document">{{[doc.title, freq]}}</span></a>
+  <a href="{{url_for('document', docid = doc.id, doctitle = doc.title)}}"><span id="document">{{doc.title.split('.')[0]}} <b>{{freq}}</b></span></a>
 {% endfor%}
 
 <!-- merged items because the user merged them -->
@@ -54,20 +82,18 @@ None
 <!-- related terms based on co-occurrence -->
 
 <h6 style="margin-top: 1rem;">Related Terms</h6>
-{% if item %}
-  {% for item in related_terms %}
-    {% if item[1] > 1 %}
-      {% if item[0] not in item[0].children %}
-          {% if item[0].entity  %}
-            <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}} <b>{{item[1]}}</b></span></a>
-          {% else %}
-            <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}} <b>{{item[1]}}</b></span></a>
-          {% endif %}
-      {% endif %}
-    {% endif %}
-  {% endfor %}
+{% if related_terms %}
+      {% for item in related_terms %}
+            {% if item[1] > 1 and item[0].fake == False and item[0].removed == False %}
+                  {% if item[0].entity  %}
+                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+                  {% else %}
+                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+                  {% endif %}
+            {% endif %}
+      {% endfor %}
 {% else %}
-None
+  None
 {% endif %}
 
 
@@ -85,6 +111,7 @@ None
       </thead>
 
     {% for item in similar_term_labels %}
+    {% if item[1] < 0.999 %}
       <tbody>
         <tr>
           <td>
@@ -94,7 +121,9 @@ None
               <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}}</span></a>
             {% endif %}
           </td>
+          
           <td>{{item[1]}}</td>
+        
           <td>
             <form style="float: right; margin-top: 0rem;" method="post" action="{{url_for('mark_similar', termid = item[0].id)}}">
               <input type="hidden" name="childid" value="{{term.id}}">
@@ -103,6 +132,7 @@ None
           </td>
         </tr>
       </tbody>
+    {% endif %}
     {% endfor %}
     </table>
 
@@ -111,6 +141,7 @@ None
 {% endif %}
 
 <!-- related sentences based on cosine similarity -->
+
 <h6 style="margin-top: 1rem;">Related sentences </h6>
 <table class="table">
   <thead class="thead-light">
@@ -122,6 +153,7 @@ None
   </thead>
 
 {% for item in related_sentparadocs %}
+ {% if (item[0].senttext | length > 40) and (item[0].senttext | length < 300) %}
   <tbody>
     <tr>
       <td>{{item[0].document.title}}</td>
@@ -129,6 +161,7 @@ None
       <td>{{item[1]}}</td>
     </tr>
   </tbody>
+ {% endif %}
 {% endfor %}
 </table>
 

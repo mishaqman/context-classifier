@@ -51,6 +51,15 @@ class DocManager:
         retval = sorted(retval, key = lambda x:x[1], reverse=True)[:top]
         return retval
 
+    def vec_vec_sim(self,itemembed,ids_embeds, top=10):
+        retval = []
+        for id_embed in ids_embeds:
+            sim = int(float(1 - distance.cosine(itemembed,id_embed[1]))*10000)/10000
+            retval.append((id_embed[0],sim))
+        retval = sorted(retval, key = lambda x:x[1], reverse=True)[:top]
+        return retval
+
+
     def doc_cos_sim(self, doc_sentid_embeds, model_sentid_embeds,top=10):
         retval = []
         for doc_sentid_embed in doc_sentid_embeds:

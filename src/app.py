@@ -4,6 +4,7 @@ from flask_bcrypt import Bcrypt
 from flask_restful import Resource, Api
 import utils, forms, doc_manager
 import os
+import math
 import db_models
 from datetime import datetime
 import pickle
@@ -38,6 +39,37 @@ labelids_embeds_filedir = os.path.join(os.getcwd(),'../data/labelids_emdeds/')
 sentids_embeds_filedir = os.path.join(os.getcwd(),'../data/sentids_embeds/')
 termids_embeds_filedir = os.path.join(os.getcwd(),'../data/termids_embeds/')
 use_model = os.path.join(os.getcwd(),'../../nlp_models/4')
+frequency_model = os.path.join(os.getcwd(),'../data/frequency.pkl')
+
+check_freq_file = pickle.load(open(frequency_model, 'rb'))
+
+def check_freq(file, term):
+    try:
+        data = file['e'][str(term)]
+    except:
+        data = None
+    return data
+
+# all_user_label_ids_embeddings = None
+# all_user_sentids_embeddings = None
+# all_user_termids_embeddings = None
+
+
+
+# dir_data = {
+#     'label' : [all_user_label_ids_embeddings, os.path.join(os.getcwd(),'../data/labelids_emdeds/')],
+#     'sent' : [all_user_sentids_embeddings, os.path.join(os.getcwd(),'../data/sentids_embeds/')],
+#     'term' : [all_user_termids_embeddings, os.path.join(os.getcwd(),'../data/termids_embeds/')]
+# }
+
+
+# def dir_data(what):
+#     data = dir_data.get(str(what))
+#     data[0] = []
+#     for file in glob.glob('{}{}_*{}ids*'.format(data[1],current_user.username, what)):
+#         if len(file) != 0:
+#             data[0] = pickle.load(open(file, 'rb'))
+
 
 # ================ Initialize Classes and Variables  ================
 
@@ -260,7 +292,6 @@ class ContextDistribution(Resource):
 
 
 
-
 class Documents(Resource):
 
     def __init__(self):
@@ -347,6 +378,8 @@ class Documents(Resource):
             sentids_embeddings = list(zip(sentids, embeddings))
             all_user_sentids_embeddings.extend(sentids_embeddings)
 
+            # perhaps we will never do this one, cuz it's very expensive.
+
             #now take each sentid_embedding of the document and compute cossim with learnt model's embedding:
 
             # answer = manager.doc_cos_sim(sentids_embeddings, all_user_label_ids_embeddings)
@@ -414,9 +447,59 @@ class Terms(Resource):
         self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
 
     def get(self):
-        terms = db_models.Term.query.filter_by(removed=False).all()
-        removed_terms = db_models.Term.query.filter_by(removed=True).all()
-        return make_response(render_template('terms.html', documents = self.documents, terms = terms, removed_terms = removed_terms))
+
+        global manager
+        if manager is None:
+            manager = doc_manager.DocManager(use_model)
+
+        all_user_label_ids_embeddings = []
+        for file in glob.glob('{}{}_*labelids*'.format(labelids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_label_ids_embeddings = pickle.load(open(file, 'rb'))
+
+        all_user_termids_embeddings = []
+        for file in glob.glob('{}{}_*termid*'.format(termids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_termids_embeddings = pickle.load(open(file, 'rb'))
+
+
+        terms = db_models.Term.query.all()
+        data = []
+
+        for term in terms:
+            term_freq_docs = len(term.sentterms)
+            term_freq = [] #freq, relevance
+            try:
+                try:
+                    term_freq = [check_freq_file['e'][term.label],min(int(math.sqrt(term_freq_docs)/math.log(check_freq_file['e'][term.label])*100)/100,1)]
+                except:
+                    term_freq = [check_freq_file['n'][term.label],min(int(math.sqrt(term_freq_docs)/math.log(check_freq_file['n'][term.label])*100)/100,1)]
+            except:
+                term_freq = [None,'User-doc-specific']
+
+            for id_embed in all_user_termids_embeddings:
+                if id_embed[0] == term.id:
+                    answer = manager.vec_vec_sim(id_embed[1],all_user_label_ids_embeddings)
+                    coss = [i[1] for i in answer]
+                    labels_ids = [i[0] for i in answer]
+                    labels = [db_models.Label.query.filter_by(id = id).one() for id in labels_ids]
+                    contexts = [label.context.name for label in labels]
+                
+                    items = zip(contexts,coss)
+                    pair = {}
+                    for item in items:
+                        if item[0] not in pair:
+                            pair[item[0]] = item[1]
+                        else:
+                            pair[item[0]] += item[1]
+
+                    summ = sum(pair.values())
+                    pair = {k:(utils.float_to_int(v/summ,2)) for k,v in pair.items()}
+                    pair = sorted(pair.items(), key = lambda x:x[1], reverse = True)[0]
+
+            data.append((term, term_freq, pair))
+
+        return make_response(render_template('terms.html', documents = self.documents, data=data))
 
 
 class Term(Resource):
@@ -448,7 +531,6 @@ class Term(Resource):
                     related_terms[item.term] = 1
                 else:
                     related_terms[item.term] += 1
-
         related_terms.pop(term)
         related_terms = sorted(related_terms.items(), key=lambda x:x[1], reverse=True)
 
@@ -478,9 +560,51 @@ class Term(Resource):
         sentparadocs = [db_models.Sentparadoc.query.filter_by(id = id).one() for id in sentparadocs_ids]
         related_sentparadocs = list(zip(sentparadocs,coss))
 
+
+        # compute term frequency in user documents:
+        term_freq_docs = len(term.sentterms)
+        # compute term universal frequency
+
+        term_freq = None
+        try:
+            try:
+                term_freq = ['entity',check_freq_file['e'][term.label],term_freq_docs,min(int(math.sqrt(term_freq_docs)/math.log(check_freq_file['e'][term.label])*100)/100,1)]
+            except:
+                term_freq = ['term',check_freq_file['n'][term.label],term_freq_docs,min(int(math.sqrt(term_freq_docs)/math.log(check_freq_file['n'][term.label])*100)/100,1)]
+        except:
+            term_freq = [None,None,term_freq_docs,'specific to user documents']
+
+        #compute domain relevance
+
+        all_user_label_ids_embeddings = []
+        for file in glob.glob('{}{}_*labelids*'.format(labelids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_label_ids_embeddings = pickle.load(open(file, 'rb'))
+
+        # for term label, take cos similarity, then get [labelid, cossim] pair from vecvec
+        # 
+
+        answer = manager.cos_sim([term.label],all_user_label_ids_embeddings)
+        coss = [i[1] for i in answer]
+        labels_ids = [i[0] for i in answer]
+        labels = [db_models.Label.query.filter_by(id = id).one() for id in labels_ids]
+        contexts = [label.context.name for label in labels]
+    
+        items = zip(contexts,coss)
+        data = {}
+        for item in items:
+            if item[0] not in data:
+                data[item[0]] = item[1]
+            else:
+                data[item[0]] += item[1]
+
+        summ = sum(data.values())
+        data = {k:(utils.float_to_int(v/summ,2)) for k,v in data.items()}
+        data = sorted(data.items(), key = lambda x:x[1], reverse = True)[:3]
+
         return make_response(render_template('term.html', term = term, documents = self.documents, similar_term_labels = similar_term_labels,
                                                     children=children, sentterms = sentterms, termdocs = termdocs, related_terms = related_terms,
-                                                    related_sentparadocs = related_sentparadocs))
+                                                    related_sentparadocs = related_sentparadocs, term_freq = term_freq, data = data))
 
 
 
@@ -542,6 +666,36 @@ class TermDelete(Resource):
         return redirect(url_for('terms'))
 
 
+class AllTermDelete(Resource):
+    def post(self):
+
+        all_user_termids_embeddings = []
+        for file in glob.glob('{}{}_*termid*'.format(termids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_termids_embeddings = pickle.load(open(file, 'rb'))
+
+        all_user_termids_embeddings = []
+
+        term_outfile = open('{}{}_{}_termids_embeds.pkl'.format(termids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
+        pickle.dump(all_user_termids_embeddings,term_outfile)
+        os.chdir(termids_embeds_filedir)
+        toberemoved = sorted(os.listdir(termids_embeds_filedir), key=os.path.getmtime)
+        toberemoved = [i for i in toberemoved if str(i.split('_')[0])==current_user.username][:-1]
+        for file in toberemoved:
+            os.remove(file)
+
+        terms = db_models.Term.query.all()
+        parentchildren = db_models.Termchild.query.all()
+        for child in parentchildren:
+            db_models.db.session.delete(child)
+        db_models.db.session.commit()
+
+        for term in terms:
+            db_models.db.session.delete(term)
+        db_models.db.session.commit()
+        return redirect(url_for('terms'))
+
+
 class TermUnDelete(Resource):
     def post(self):
         termid = request.form['termid']
@@ -597,6 +751,7 @@ api.add_resource(Terms, '/terms', endpoint = 'terms')
 api.add_resource(TermDelete,'/term_delete', endpoint = 'term_delete')
 api.add_resource(DocDelete,'/doc_delete', endpoint = 'doc_delete')
 api.add_resource(TermUnDelete,'/term_undelete', endpoint = 'term_undelete')
+api.add_resource(AllTermDelete,'/all_term_delete', endpoint = 'all_term_delete')
 
 
 
