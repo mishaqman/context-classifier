@@ -3,48 +3,136 @@
 {% block content %}
 
 
-<div>
 <legend>{{term.label}}</legend>
-<small>Term ID <i>{{term.id}}</i></small><br>
+
+<!-- basic info related to a term -->
+
+<div>
+
+  <small>Term ID <i>{{term.id}}</i></small><br>
+
+  {% if term.fake %}
+  <small>Status <i>Fake</i></small><br>
+    {% else %}
+  <small>Status <i>Legit</i></small><br>
+  {% endif %}
+
+  <small>Total Frequency <i>{{ term.sentterms | length }}</i></small><br>
+
+</div>
 
 
-{% if term.fake %}
-<small>Status <i>Fake</i></small><br>
-  {% else %}
-<small>Status <i>Legit</i></small><br>
-{% endif %}
+<!-- list of documents, the term appears in -->
 
-<small>Total Frequency <i>{{ term.sentterms | length }}</i></small><br>
-
-<small>Documents</small>
+<h6 style="margin-top: 1rem;">Documents</h6>
 
 {% for doc, freq in termdocs.items() %}
-{{[doc.split('.')[0], freq]}}
+  <a href="{{url_for('document', docid = doc.id, doctitle = doc.title)}}"><span id="document">{{[doc.title, freq]}}</span></a>
 {% endfor%}
 
+<!-- merged items because the user merged them -->
+
+<h6 style="margin-top: 1rem;">Merged Items</h6>
+{% if children %}
+{% for child in children %}
+  <div>
+      {% if child.term.entity  %}
+        <a href="{{url_for('term', termid = child.term.id)}}"><span id="entity">{{child.term.label}}</span></a>
+      {% else %}
+        <a href="{{url_for('term', termid = child.term.id)}}"><span id="term">{{child.term.label}}</span></a>
+      {% endif %}
+      <form style="float: right; margin-top: 0rem;" method="post" action="{{url_for('unmark_similar', termid = child.term.id)}}">
+        <input type="hidden" name="childid" value="{{term.id}}">
+        <button type="submit">UnMark Similar</button>
+      </form>
+  </div>
+{% endfor %}
+{% else %}
+None
+{% endif %}
+
+<!-- related terms based on co-occurrence -->
+
 <h6 style="margin-top: 1rem;">Related Terms</h6>
+{% if item %}
+  {% for item in related_terms %}
+    {% if item[1] > 1 %}
+      {% if item[0] not in item[0].children %}
+          {% if item[0].entity  %}
+            <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+          {% else %}
+            <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+          {% endif %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% else %}
+None
+{% endif %}
 
 
+<!-- similar terms based on cosine similarity -->
+
+<h6 style="margin-top: 1rem;">Similar Terms - available for merging</h6>
+{% if similar_term_labels %}
+    <table class="table">
+      <thead class="thead-light">
+        <tr>
+          <th style="width: auto;" scope="col">Similar Term</th>
+          <th style="width: auto;" scope="col">Similarity</th>
+          <th style="width: auto;" scope="col">Action</th>
+        </tr>
+      </thead>
+
+    {% for item in similar_term_labels %}
+      <tbody>
+        <tr>
+          <td>
+            {% if item[0].entity  %}
+              <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}}</span></a>
+            {% else %}
+              <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}}</span></a>
+            {% endif %}
+          </td>
+          <td>{{item[1]}}</td>
+          <td>
+            <form style="float: right; margin-top: 0rem;" method="post" action="{{url_for('mark_similar', termid = item[0].id)}}">
+              <input type="hidden" name="childid" value="{{term.id}}">
+              <button type="submit">Mark Similar</button>
+            </form>
+          </td>
+        </tr>
+      </tbody>
+    {% endfor %}
+    </table>
+
+{% else %}
+None
+{% endif %}
+
+<!-- related sentences based on cosine similarity -->
+<h6 style="margin-top: 1rem;">Related sentences </h6>
 <table class="table">
   <thead class="thead-light">
     <tr>
-      <th style="width: auto;" scope="col">Related Term</th>
-      <th style="width: auto;" scope="col">Frequency</th>
+      <th style="width: auto;" scope="col">Document</th>
+      <th style="width: auto;" scope="col">Sentence</th>
+      <th style="width: auto;" scope="col">Conf</th>
     </tr>
   </thead>
 
-  {% for term, freq in related_terms.items() %}
+{% for item in related_sentparadocs %}
   <tbody>
-    
     <tr>
-      <td>{{term}}</td>
-      <td>{{freq}}</td>
+      <td>{{item[0].document.title}}</td>
+      <td>{{item[0].senttext}}</td>
+      <td>{{item[1]}}</td>
     </tr>
-    
   </tbody>
-  {% endfor %}
-
+{% endfor %}
 </table>
+
+
 
 {% endblock content %}
 

@@ -26,24 +26,27 @@
     </tr>
   </thead>
 
-  {% for sent in sentparadocs %}
+{% for sent in sentparadocs %}
+  {% if (sent.senttext|length > 40) and (sent.senttext|length <340) %}
   <tbody>
     <tr>
       <td>{{sent.paraid}}</td>
       <td>{{sent.senttext}}</td>
       <td>{% for term in sent.sentterms %}
-        {% if (not term.term.removed) and (not term.term.fake) %}
+        {% if (not term.term.removed) and (not term.term.fake)  %}
       	{% if term.term.entity %}
           <a id="entity" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
         {% else %}
           <a id="term" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
         {% endif %}
         {% endif %}
+
       	
       {% endfor %}</td>
     </tr>
   </tbody>
-  {% endfor %}
+  {% endif %}
+{% endfor %}
 </table>
 
 

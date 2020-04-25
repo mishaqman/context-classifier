@@ -7,7 +7,7 @@
     <div class="form-group">
         <legend>Upload your documents</legend>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-left: -1rem;">
             {{ form.files(class="form-control-file col-md") }}
             {% if form.files.errors %}
                 {% for error in form.files.errors %}
@@ -29,6 +29,7 @@
   <thead class="thead-light">
     <tr>
       <th style="width: auto;" scope="col">Document</th>
+      <th style="width: auto;" scope="col">Date</th>
       <th style="width: auto;" scope="col">Total terms</th>
       <th style="width: auto;" scope="col">Total entities</th>
       <th style="width: auto;" scope="col">Total deleted terms</th>
@@ -40,7 +41,8 @@
   <tbody>
     
     <tr>
-      <td>{{doc}}</td>
+      <td><a href="{{url_for('document', docid=doc.id, doctitle=doc.title)}}"><span id="document">{{doc.title}}</span></a></td>
+      <td>{{doc.date.strftime('%d %b %Y')}}</td>
       <td>{{total[0]}}</td>
       <td>{{total[1]}}</td>
       <td>{{total[2]}}</td>

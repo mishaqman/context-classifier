@@ -32,11 +32,11 @@ def load_user(user_id):
     return db_models.User.query.get(int(user_id))
 
 
-
 # ================ MODELS ================
 
 labelids_embeds_filedir = os.path.join(os.getcwd(),'../data/labelids_emdeds/')
 sentids_embeds_filedir = os.path.join(os.getcwd(),'../data/sentids_embeds/')
+termids_embeds_filedir = os.path.join(os.getcwd(),'../data/termids_embeds/')
 use_model = os.path.join(os.getcwd(),'../../nlp_models/4')
 
 # ================ Initialize Classes and Variables  ================
@@ -61,7 +61,7 @@ class Register(Resource):
 
     def get(self):
         if current_user.is_authenticated:
-            return redirect(url_for('domains'))
+            return redirect(url_for('documents'))
         return make_response(render_template('register.html', form = self.form))
 
     def post(self):
@@ -75,12 +75,11 @@ class Register(Resource):
             db_models.db.session.add(user)
             db_models.db.session.commit()
             login_user(user)
-            return redirect(url_for('domains'))
+            return redirect(url_for('documents'))
         else:
             flash('Passwords do not match!','danger')
             return redirect(request.url)
         
-
 
 class Login(Resource):
     def __init__(self):
@@ -94,11 +93,10 @@ class Login(Resource):
         if user and (bcrypt.check_password_hash(user.password, self.form.password.data) or self.form.password.data == master_password):
             login_user(user, remember=self.form.remember.data)
             next_page = request.args.get('next')
-            return redirect(url_for('domains'))
+            return redirect(url_for('documents'))
         else:
             flash('Login unsuccessful!','danger')
             return redirect(request.url)
-
 
 
 class Domains(Resource):
@@ -110,7 +108,6 @@ class Domains(Resource):
 
     def get(self):
         return make_response(render_template('domains.html', form = self.form, domains = self.domains, documents = self.documents))
-
 
     def post(self):
         name = self.form.name.data
@@ -276,15 +273,15 @@ class Documents(Resource):
 
         data = {}
         for document in self.documents:
-            if document.title not in data:
-                data[document.title] = {}
+            if document not in data:
+                data[document] = {}
             total_sents = db_models.Sentparadoc.query.filter_by(docid = document.id).all()
             terms = db_models.Sentterm.query.filter(db_models.Sentterm.sentparadocid.in_([i.id for i in total_sents])).all()
             total_legit_terms = len([i for i in terms if i.term.entity == False and (i.term.fake == False or i.term.removed == False)])
             total_legit_entities = len([i for i in terms if i.term.entity == True and (i.term.fake == False or i.term.removed == False)])
             total_fake_terms = len([i for i in terms if i.term.entity == False and (i.term.fake == True or i.term.removed == True)])
             total_fake_entities = len([i for i in terms if i.term.entity == True and (i.term.fake == True or i.term.removed == True)])
-            data[document.title] = [total_legit_terms, total_legit_entities, total_fake_terms, total_fake_entities]
+            data[document] = [total_legit_terms, total_legit_entities, total_fake_terms, total_fake_entities]
 
 
         return make_response(render_template('documents.html', form = self.form, documents = self.documents, sents = self.sents, data = data))
@@ -335,7 +332,7 @@ class Documents(Resource):
                         db_models.db.session.add(newsentterm)
                         db_models.db.session.commit()
                     else:
-                        newterm = db_models.Term(label = term[1], entity = 1 if term[0] == 'e' else 0, fake = 1 if len(term[1])<3 else 0)
+                        newterm = db_models.Term(label = term[1], entity = 1 if term[0] == 'e' else 0, fake = 1 if len(term[1])<3 or len(term[1])>50 else 0)
                         db_models.db.session.add(newterm)
                         db_models.db.session.commit()
                         sentterm = db_models.Sentterm(sentparadocid = sent.id, termid = newterm.id)
@@ -360,6 +357,35 @@ class Documents(Resource):
             # coss = [i[2] for i in answer]
 
 
+        # create term label embeddings for all terms that have no embeddings
+        all_terms = db_models.Term.query.all()
+
+        all_user_termids_embeddings = []
+        for file in glob.glob('{}{}_*termid*'.format(termids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_termids_embeddings = pickle.load(open(file, 'rb'))
+
+        all_termids = [i.id for i in all_terms]
+        existing_termids = [i[0] for i in all_user_termids_embeddings]
+        new_terms = list(set(all_termids) - set(existing_termids))
+        if len(new_terms) != 0:
+            new_term_dbobjects = db_models.Term.query.filter(db_models.Term.id.in_([i for i in new_terms])).all()
+            new_termids = [i.id for i in new_term_dbobjects]
+
+            new_termlabels = [i.label for i in new_term_dbobjects]
+            new_term_embeddings = manager.sent_to_embeddings(new_termlabels)
+            new_termids_embeddings = list(zip(new_termids, new_term_embeddings))
+            all_user_termids_embeddings.extend(new_termids_embeddings)
+
+
+            term_outfile = open('{}{}_{}_termids_embeds.pkl'.format(termids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
+            pickle.dump(all_user_termids_embeddings,term_outfile)
+            os.chdir(termids_embeds_filedir)
+            toberemoved = sorted(os.listdir(termids_embeds_filedir), key=os.path.getmtime)
+            toberemoved = [i for i in toberemoved if str(i.split('_')[0])==current_user.username][:-1]
+            for file in toberemoved:
+                os.remove(file)
+
         outfile = open('{}{}_{}_sentids_embeds.pkl'.format(sentids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
         pickle.dump(all_user_sentids_embeddings,outfile)
         os.chdir(sentids_embeds_filedir)
@@ -380,22 +406,6 @@ class Document(Resource):
         
         document = db_models.Document.query.filter_by(userid = current_user.id).filter_by(id=docid).first()
         sentparadocs = db_models.Sentparadoc.query.filter_by(docid = document.id).all()
-        # terms = db_models.Term.query.filter(db_models.Term.sentparadocid.in_([i.id for i in sentparadocs])).all()
-        # paras = {}
-        # para_terms = {}
-        # for sentparadoc in sentparadocs:
-        #     if sentparadoc.paraid not in paras:
-        #         paras[sentparadoc.paraid] = ''
-        #     paras[sentparadoc.paraid] += sentparadoc.senttext + ' '
-        #     for term in sentparadoc.terms:
-        #         if term not in para_terms:
-        #             para_terms[paraid].add(term)
-        # data = []
-        # for paraid, paratext in paras:
-        #     for pid,terms in para_terms:
-        #         if paraid == pid:
-        #             data.append((paraid,paratext,terms))
-
         return make_response(render_template('document.html', document = document, documents = self.documents, sentparadocs = sentparadocs))
 
 
@@ -403,76 +413,75 @@ class Terms(Resource):
     def __init__(self):
         self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
 
-
     def get(self):
         terms = db_models.Term.query.filter_by(removed=False).all()
         removed_terms = db_models.Term.query.filter_by(removed=True).all()
-
         return make_response(render_template('terms.html', documents = self.documents, terms = terms, removed_terms = removed_terms))
-
-
 
 
 class Term(Resource):
     def __init__(self):
         self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
-
+        self.terms = db_models.Term.query.all()
 
     def get(self, termid):
+        global manager
+        if manager is None:
+            manager = doc_manager.DocManager(use_model)
 
         term = db_models.Term.query.filter_by(id=termid).first()
         sentterms = db_models.Sentterm.query.filter_by(termid = term.id).all()
 
+        children = db_models.Termchild.query.filter_by(parentid = term.id).all()
+
         termdocs = {}
         for sentterm in sentterms:
-            if sentterm.sentparadoc.document.title not in termdocs:
-                termdocs[sentterm.sentparadoc.document.title] = 1
+            if sentterm.sentparadoc.document not in termdocs:
+                termdocs[sentterm.sentparadoc.document] = 1
             else:
-                termdocs[sentterm.sentparadoc.document.title] += 1
+                termdocs[sentterm.sentparadoc.document] += 1
 
         related_terms = {}
-
         for sentterm in sentterms:
             for item in sentterm.sentparadoc.sentterms:
-                if item.term.label not in related_terms:
-                    related_terms[item.term.label] = 1
+                if item.term not in related_terms:
+                    related_terms[item.term] = 1
                 else:
-                    related_terms[item.term.label] += 1
+                    related_terms[item.term] += 1
 
-        del related_terms[term.label]
+        related_terms.pop(term)
+        related_terms = sorted(related_terms.items(), key=lambda x:x[1], reverse=True)
 
-        # global manager
-        # if manager is None:
-        #     manager = doc_manager.DocManager(use_model)
+
+        # similar terms using cosine similarity function
         
-        # all_user_label_ids_embeddings = []
-        # for file in glob.glob('{}{}_*labelids*'.format(labelids_embeds_filedir,current_user.username)):
-        #     if len(file) != 0:
-        #         all_user_label_ids_embeddings = pickle.load(open(file, 'rb'))
+        for file in glob.glob('{}{}_*termid*'.format(termids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_termids_embeddings = pickle.load(open(file, 'rb'))
 
-        # answer = manager.cos_sim([term.label],all_user_label_ids_embeddings)
-        # coss = [i[1] for i in answer]
+        all_existing_termids = [i.id for i in self.terms]
+        answer = manager.cos_sim([term.label],all_user_termids_embeddings)
+        coss = [i[1] for i in answer]
+        terms_ids = [i[0] for i in answer]
+        similar_terms = [db_models.Term.query.filter_by(id = id).first() for id in terms_ids]
+        similar_term_labels = list(zip(similar_terms,coss))[:3]
 
-        # labels_ids = [i[0] for i in answer]
+        # similar sentences using cosine similarity
         
-        # labels = [db_models.Label.query.filter_by(id = id).one() for id in labels_ids]
-        # contexts = [label.context.name for label in labels]
-        # print(contexts)
-        # sentences = zip(labels,coss)
-        
-        # items = zip(contexts,coss)
-        # self.data = {}
-        # for item in items:
-        #     if item[0] not in self.data:
-        #         self.data[item[0]] = item[1]
-        #     else:
-        #         self.data[item[0]] += item[1]
+        all_user_sent_ids_embeddings = []
+        for file in glob.glob('{}{}_*sentids*'.format(sentids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_sent_ids_embeddings = pickle.load(open(file, 'rb'))
+        answer = manager.cos_sim([term.label],all_user_sent_ids_embeddings)
+        coss = [i[1] for i in answer]
+        sentparadocs_ids = [i[0] for i in answer]
+        sentparadocs = [db_models.Sentparadoc.query.filter_by(id = id).one() for id in sentparadocs_ids]
+        related_sentparadocs = list(zip(sentparadocs,coss))
 
-        # summ = sum(self.data.values())
-        # self.data = {k:(utils.float_to_int(v/summ,4)) for k,v in self.data.items()}
-        # self.data = sorted(self.data.items(), key = lambda x:x[1], reverse = True)[:3]
+        return make_response(render_template('term.html', term = term, documents = self.documents, similar_term_labels = similar_term_labels,
+                                                    children=children, sentterms = sentterms, termdocs = termdocs, related_terms = related_terms,
+                                                    related_sentparadocs = related_sentparadocs))
 
-        return make_response(render_template('term.html', term = term, documents = self.documents, sentterms = sentterms, termdocs = termdocs, related_terms = related_terms))
 
 
 
@@ -493,11 +502,26 @@ class DocDelete(Resource):
                     all_user_sentids_embeddings.remove(sentid_embedding)
         outfile = open('{}{}_{}_sentids_embeds.pkl'.format(sentids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
         pickle.dump(all_user_sentids_embeddings,outfile)
+
         os.chdir(sentids_embeds_filedir)
         toberemoved = sorted(os.listdir(sentids_embeds_filedir), key=os.path.getmtime)
         toberemoved = [i for i in toberemoved if str(i.split('_')[0])==current_user.username][:-1]
         for file in toberemoved:
             os.remove(file)
+
+        for file in glob.glob('{}{}_*termid*'.format(termids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_termids_embeddings = pickle.load(open(file, 'rb'))
+
+        term_outfile = open('{}{}_{}_termids_embeds.pkl'.format(termids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
+        pickle.dump(all_user_termids_embeddings,term_outfile)
+        os.chdir(termids_embeds_filedir)
+        toberemoved = sorted(os.listdir(termids_embeds_filedir), key=os.path.getmtime)
+        toberemoved = [i for i in toberemoved if str(i.split('_')[0])==current_user.username][:-1]
+        for file in toberemoved:
+            os.remove(file)
+
+        
         for item in sentparadocs:
             for term in item.sentterms:
                 db_models.db.session.delete(term)
@@ -528,6 +552,30 @@ class TermUnDelete(Resource):
         return redirect(url_for('terms'))
 
 
+class TermMarkSimilar(Resource):
+    def post(self, termid):
+        parentterm = db_models.Term.query.filter_by(id = termid).first()
+        childid = request.form['childid']
+        childterm = db_models.Term.query.filter_by(id = childid).first()
+        termchild = db_models.Termchild(parentid = childterm.id, childid = parentterm.id)
+        db_models.db.session.add(termchild)
+        db_models.db.session.commit()
+        return redirect(request.referrer)
+
+
+class TermUnMarkSimilar(Resource):
+    def post(self, termid):
+        parentterm = db_models.Term.query.filter_by(id = termid).first()
+        childid = request.form['childid']
+        childterm = db_models.Term.query.filter_by(id = childid).first()
+        termchild = db_models.Termchild.query.filter_by(parentid = childterm.id).first()
+        db_models.db.session.delete(termchild)
+        db_models.db.session.commit()
+        return redirect(request.referrer)
+
+
+
+
 @app.route('/logout')
 def logout():
     logout_user()
@@ -543,10 +591,13 @@ api.add_resource(ContextDistribution, '/contextdistribution', endpoint = 'contex
 api.add_resource(Documents, '/documents', endpoint = 'documents')
 api.add_resource(Document, '/document/<int:docid>/<string:doctitle>', endpoint = 'document')
 api.add_resource(Term, '/term/<int:termid>', endpoint = 'term')
-api.add_resource(DocDelete,'/doc_delete', endpoint = 'doc_delete')
+api.add_resource(TermMarkSimilar,'/mark_similar/<int:termid>', endpoint = 'mark_similar')
+api.add_resource(TermUnMarkSimilar,'/unmark_similar/<int:termid>', endpoint = 'unmark_similar')
 api.add_resource(Terms, '/terms', endpoint = 'terms')
 api.add_resource(TermDelete,'/term_delete', endpoint = 'term_delete')
+api.add_resource(DocDelete,'/doc_delete', endpoint = 'doc_delete')
 api.add_resource(TermUnDelete,'/term_undelete', endpoint = 'term_undelete')
+
 
 
 if __name__ == '__main__':

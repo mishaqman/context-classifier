@@ -88,3 +88,16 @@ body {
 	line-height: 1.2;
 	border-radius: 0.25rem;
 }
+
+#document {
+	display: inline-block;
+	color: black;
+	text-align: center;
+	vertical-align: middle;
+	background-color: #d1d8de;
+	border: 1px solid transparent;
+	padding: 0.2rem 0.2rem;
+	margin: 0.2rem;
+	line-height: 1.2;
+	border-radius: 0.25rem;
+}
