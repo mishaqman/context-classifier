@@ -25,32 +25,40 @@
 
 {% endif %}
 
+
 <!-- operational risk relevance -->
 
-
+{% if data %}
 <h6 style="margin-top: 1rem;">
+
   <span>
     Operational Risk Relevance
   </span>
-  <b>
-{% if (data[0][0] == 'NON') and (data[0][1] > 0.4) %}
-Not relevant
-{% else %}
-Relevant
-{% endif%}
-</b>
+    <b>
+      {% if (data[0][0] == 'NON') and (data[0][1] > 0.5) %}
+        Not relevant
+      {% elif (data[0][0] == 'NON') and (data[0][1] <= 0.5) and (data[0][1] > 0.3) %}
+        Maybe relevant
+      {% else %}
+        Relevant
+      {% endif%}
+    </b>
 </h6>
 
-{% for item in data %}
-
-<span id="context">{{item[0]}} <b>{{item[1]}}</b></span>
-{% endfor %}
-
+    {% for item in data %}
+      {% if (item[0] == 'NON') %}
+        <span>{{item[0]}} <b>{{item[1]}}</b></span>
+      {% else %}
+        <span id="context">{{item[0]}} <b>{{item[1]}}</b></span>
+      {% endif %}
+    {% endfor %}
+{% endif %}
 </div>
 
 
 
 <!-- list of documents, the term appears in -->
+<hr id="line">
 
 <h6 style="margin-top: 1rem;">Documents</h6>
 
@@ -58,7 +66,28 @@ Relevant
   <a href="{{url_for('document', docid = doc.id, doctitle = doc.title)}}"><span id="document">{{doc.title.split('.')[0]}} <b>{{freq}}</b></span></a>
 {% endfor%}
 
+
+<!-- related terms based on co-occurrence -->
+<hr id="line">
+
+<h6 style="margin-top: 1rem;">Related Terms</h6>
+{% if related_terms %}
+      {% for item in related_terms %}
+            {% if item[1] > 1 and item[0].fake == False and item[0].removed == False %}
+                  {% if item[0].entity  %}
+                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+                  {% else %}
+                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+                  {% endif %}
+            {% endif %}
+      {% endfor %}
+{% else %}
+  None
+{% endif %}
+
+
 <!-- merged items because the user merged them -->
+<hr id="line">
 
 <h6 style="margin-top: 1rem;">Merged Items</h6>
 {% if children %}
@@ -79,39 +108,24 @@ Relevant
 None
 {% endif %}
 
-<!-- related terms based on co-occurrence -->
-
-<h6 style="margin-top: 1rem;">Related Terms</h6>
-{% if related_terms %}
-      {% for item in related_terms %}
-            {% if item[1] > 1 and item[0].fake == False and item[0].removed == False %}
-                  {% if item[0].entity  %}
-                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}} <b>{{item[1]}}</b></span></a>
-                  {% else %}
-                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}} <b>{{item[1]}}</b></span></a>
-                  {% endif %}
-            {% endif %}
-      {% endfor %}
-{% else %}
-  None
-{% endif %}
-
 
 <!-- similar terms based on cosine similarity -->
+<hr id="line">
 
-<h6 style="margin-top: 1rem;">Similar Terms - available for merging</h6>
-{% if similar_term_labels %}
+{% if similar_term_labels  %}
+
     <table class="table">
       <thead class="thead-light">
         <tr>
-          <th style="width: auto;" scope="col">Similar Term</th>
+          <th style="width: auto;" scope="col">Similar terms - available for merging</th>
           <th style="width: auto;" scope="col">Similarity</th>
           <th style="width: auto;" scope="col">Action</th>
         </tr>
       </thead>
 
+
     {% for item in similar_term_labels %}
-    {% if item[1] < 0.999 %}
+    {% if (item[1] < 0.999) and (item[1] > 0.399) %}
       <tbody>
         <tr>
           <td>
@@ -136,8 +150,9 @@ None
     {% endfor %}
     </table>
 
+
 {% else %}
-None
+  None
 {% endif %}
 
 <!-- related sentences based on cosine similarity -->

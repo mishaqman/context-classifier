@@ -263,7 +263,6 @@ class ContextDistribution(Resource):
         for file in glob.glob('{}{}_*labelids*'.format(labelids_embeds_filedir,current_user.username)):
             if len(file) != 0:
                 all_user_label_ids_embeddings = pickle.load(open(file, 'rb'))
-                print(all_user_label_ids_embeddings)
 
         self.question = [self.form.sentence.data]
         embeddings = manager.sent_to_embeddings(self.question)
@@ -462,11 +461,13 @@ class Terms(Resource):
             if len(file) != 0:
                 all_user_termids_embeddings = pickle.load(open(file, 'rb'))
 
-
         terms = db_models.Term.query.all()
         data = []
-
+        count = 0
         for term in terms:
+            count +=1
+            if count == 10:
+                return make_response(render_template('terms.html', documents = self.documents, data=data))
             term_freq_docs = len(term.sentterms)
             term_freq = [] #freq, relevance
             try:
@@ -476,26 +477,28 @@ class Terms(Resource):
                     term_freq = [check_freq_file['n'][term.label],min(int(math.sqrt(term_freq_docs)/math.log(check_freq_file['n'][term.label])*100)/100,1)]
             except:
                 term_freq = [None,'User-doc-specific']
+            if len(all_user_label_ids_embeddings)>0:
+                for id_embed in all_user_termids_embeddings:
+                    if id_embed[0] == term.id:
+                        answer = manager.vec_vec_sim(id_embed[1],all_user_label_ids_embeddings)
+                        coss = [i[1] for i in answer]
+                        labels_ids = [i[0] for i in answer]
+                        labels = [db_models.Label.query.filter_by(id = id).one() for id in labels_ids]
+                        contexts = [label.context.name for label in labels]
+                    
+                        items = zip(contexts,coss)
+                        pair = {}
+                        for item in items:
+                            if item[0] not in pair:
+                                pair[item[0]] = item[1]
+                            else:
+                                pair[item[0]] += item[1]
 
-            for id_embed in all_user_termids_embeddings:
-                if id_embed[0] == term.id:
-                    answer = manager.vec_vec_sim(id_embed[1],all_user_label_ids_embeddings)
-                    coss = [i[1] for i in answer]
-                    labels_ids = [i[0] for i in answer]
-                    labels = [db_models.Label.query.filter_by(id = id).one() for id in labels_ids]
-                    contexts = [label.context.name for label in labels]
-                
-                    items = zip(contexts,coss)
-                    pair = {}
-                    for item in items:
-                        if item[0] not in pair:
-                            pair[item[0]] = item[1]
-                        else:
-                            pair[item[0]] += item[1]
-
-                    summ = sum(pair.values())
-                    pair = {k:(utils.float_to_int(v/summ,2)) for k,v in pair.items()}
-                    pair = sorted(pair.items(), key = lambda x:x[1], reverse = True)[0]
+                        summ = sum(pair.values())
+                        pair = {k:(utils.float_to_int(v/summ,2)) for k,v in pair.items()}
+                        pair = sorted(pair.items(), key = lambda x:x[1], reverse = True)[0]
+            else:
+                pair = (None,None)
 
             data.append((term, term_freq, pair))
 

@@ -20,7 +20,10 @@
     </tr>
   </thead>
 
+
+
   {% for item in data %}
+
   <tbody>
     <tr>
       <td>{{item[0].id}}</td>
@@ -28,10 +31,10 @@
       <td>{{item[0].sentterms | length }}</a></td>
       <td>{{item[1][0]}}</td>
       <td>{{item[1][1]}}</td>
-      {% if item[2][0] != 'NON' %}
-      <td><span id="context">{{item[2][0]}} <b>{{item[2][1]}}</span></b></td>
-      {% else %}
+      {% if (item[2][0] == 'NON') and (item[2][1] > 0.5) %}
       <td>Not relevant</td>
+      {% else %}
+      <td><span id="context">{{item[2][0]}} <b>{{item[2][1]}}</span></b></td>
       {% endif %}
 
       {% if item[0].entity %}
@@ -61,11 +64,11 @@
 </table>
 
 
-{% endblock content %}
-
 <form style="float: center; margin-top: 0rem;" method="post" action="{{url_for('all_term_delete')}}">
   <input type="hidden">
   <button type="submit" style="border: 0; background: none;">
     <i class="fa fa-trash-o"></i>
   </button>
 </form>
+{% endblock content %}
+

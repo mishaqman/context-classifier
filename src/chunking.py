@@ -38,8 +38,8 @@ class Chunking:
             
             {
                 'chunk'  : 'e',
-                'start'  : set(['NNP','NNPS','JJ','JJR','JJS','CD']),
-                'middle' : set(['NNP','NNPS','JJ','JJR','JJS','IN','HYPH','CC','CD']),
+                'start'  : set(['NNP','NNPS','CD']),
+                'middle' : set(['NNP','NNPS','IN','HYPH','CC','CD']),
                 'end'    : set(['NNP','NNPS','CD']),
                 'must_have' : set(['NNP','NNPS'])
             },
@@ -54,7 +54,7 @@ class Chunking:
 
             {
                 'chunk'  : 'n',
-                'previous_prohibited': set(['VB','VBD','VBP','VBZ']),
+                'previous_prohibited': set(['VB','VBD','VBP','VBZ','RB','RBR','RBS']),
                 'start'  : set(['NN','NNS','JJ','JJR','JJS','VBN','VBG','NNP','NNPS']),
                 'middle' : set(['NN','NNS','JJ','JJR','JJS','VBN','VBG','HYPH']),
                 'end'    : set(['NN','NNS'])

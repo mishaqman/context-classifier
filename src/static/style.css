@@ -114,3 +114,10 @@ body {
 	line-height: 1.2;
 	border-radius: 0.25rem;
 }
+
+#line {
+	height: 0.1rem;
+	border-width: 0;
+	color: #ebd5d3;
+	background-color: #ebd5d3
+}
