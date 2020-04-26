@@ -5,7 +5,7 @@
 <form method="POST" action="{{url_for('contextdistribution')}}" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
     <div class="form-group">
-        <legend>Get context distribution for a sentence</legend>
+        <legend>Get context distribution</legend>
 
         <div class="form-group">
             {% if form.sentence.errors %}
@@ -19,11 +19,6 @@
                 {{ form.sentence(class="form-control form-control-md", placeholder = 'Domain sentence', autofocus = 'autofocus') }}
             {% endif %}
         </div>
-
-        
-    </div>
-    <div class="form-group">
-        {{ form.submit(class="btn btn-primary") }}
     </div>
 </form>
 
@@ -40,19 +35,16 @@
 
   {% for i in data %}
   <tbody>
-    
     <tr>
       <td>{{i[0]}}</td>
       <td>{{i[1]}}</td>
     </tr>
-    
   </tbody>
   {% endfor %}
-
 </table>
 
 
-<legend>Your cosine similar sentences</legend>
+<legend>Cosine-similar domain-labelled sentences</legend>
 <table class="table">
   <thead class="thead-light">
     <tr>
@@ -63,17 +55,16 @@
   </thead>
 
   {% for item in sentences %}
+  {% if (item[0].text | length > 40) and (item[0].text | length < 300) %}
   <tbody>
-    
     <tr>
       <td>{{item[0].text}}</td>
       <td>{{item[1]}}</td>
       <td>{{item[0].context.name}}</td>
     </tr>
-    
   </tbody>
+  {% endif %}
   {% endfor %}
-
 </table>
 
 {% endif %}

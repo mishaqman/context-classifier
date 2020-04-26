@@ -37,3 +37,8 @@ class LabelUploadForm(FlaskForm):
 class ContextDistributionForm(FlaskForm):
     sentence = StringField('Sentence', validators=[Length(min=2, max=200)])
     submit = SubmitField('Submit')
+
+
+class DocSearchForm(FlaskForm):
+    sentence = StringField('Sentence', validators=[Length(min=2, max=200)])
+    submit = SubmitField('Submit')

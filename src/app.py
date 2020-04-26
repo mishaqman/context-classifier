@@ -51,14 +51,14 @@ def check_freq(file, term):
     return data
 
 # all_user_label_ids_embeddings = None
-# all_user_sentids_embeddings = None
+# all_user_sent_ids_embeddings = None
 # all_user_termids_embeddings = None
 
 
 
 # dir_data = {
 #     'label' : [all_user_label_ids_embeddings, os.path.join(os.getcwd(),'../data/labelids_emdeds/')],
-#     'sent' : [all_user_sentids_embeddings, os.path.join(os.getcwd(),'../data/sentids_embeds/')],
+#     'sent' : [all_user_sent_ids_embeddings, os.path.join(os.getcwd(),'../data/sentids_embeds/')],
 #     'term' : [all_user_termids_embeddings, os.path.join(os.getcwd(),'../data/termids_embeds/')]
 # }
 
@@ -246,12 +246,14 @@ class ContextDistribution(Resource):
     def __init__(self):
         
         self.form = forms.ContextDistributionForm()
+        self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
         self.data = None
         self.question = None
         self.answer = None
 
     def get(self):
-        return make_response(render_template('contextdistribution.html', form= self.form, data = self.data, question = self.question, answer = self.answer))
+        return make_response(render_template('contextdistribution.html', form= self.form, data = self.data, documents = self.documents,
+                                                            question = self.question, answer = self.answer))
 
     def post(self):
 
@@ -287,7 +289,8 @@ class ContextDistribution(Resource):
         self.data = {k:(utils.float_to_int(v/summ,4)) for k,v in self.data.items()}
         self.data = sorted(self.data.items(), key = lambda x:x[1], reverse = True)[:3]
 
-        return make_response(render_template('contextdistribution.html', form= self.form, data = self.data, question = self.question, answer = self.answer, sentences = sentences))
+        return make_response(render_template('contextdistribution.html', form= self.form, data = self.data, documents = self.documents,
+                                                            question = self.question, answer = self.answer, sentences = sentences))
 
 
 
@@ -330,10 +333,10 @@ class Documents(Resource):
 
         self.files = self.form.files.data
 
-        all_user_sentids_embeddings = []
+        all_user_sent_ids_embeddings = []
         for file in glob.glob('{}{}_*sentid*'.format(sentids_embeds_filedir,current_user.username)):
             if len(file) != 0:
-                all_user_sentids_embeddings = pickle.load(open(file, 'rb'))
+                all_user_sent_ids_embeddings = pickle.load(open(file, 'rb'))
 
         for file in self.files:
             if file.filename in [doc.title for doc in self.documents]:
@@ -375,7 +378,7 @@ class Documents(Resource):
             embeddings = manager.sent_to_embeddings(sents)
 
             sentids_embeddings = list(zip(sentids, embeddings))
-            all_user_sentids_embeddings.extend(sentids_embeddings)
+            all_user_sent_ids_embeddings.extend(sentids_embeddings)
 
             # perhaps we will never do this one, cuz it's very expensive.
 
@@ -419,7 +422,7 @@ class Documents(Resource):
                 os.remove(file)
 
         outfile = open('{}{}_{}_sentids_embeds.pkl'.format(sentids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
-        pickle.dump(all_user_sentids_embeddings,outfile)
+        pickle.dump(all_user_sent_ids_embeddings,outfile)
         os.chdir(sentids_embeds_filedir)
         toberemoved = sorted(os.listdir(sentids_embeds_filedir), key=os.path.getmtime)
         toberemoved = [i for i in toberemoved if str(i.split('_')[0])==current_user.username][:-1]
@@ -621,14 +624,14 @@ class DocDelete(Resource):
 
         for file in glob.glob('{}{}_*'.format(sentids_embeds_filedir,current_user.username)):
             if len(file) != 0:
-                all_user_sentids_embeddings = pickle.load(open(file, 'rb'))
+                all_user_sent_ids_embeddings = pickle.load(open(file, 'rb'))
 
         for item in sentparadocs:
-            for sentid_embedding in all_user_sentids_embeddings:
+            for sentid_embedding in all_user_sent_ids_embeddings:
                 if sentid_embedding[0] == item.id:
-                    all_user_sentids_embeddings.remove(sentid_embedding)
+                    all_user_sent_ids_embeddings.remove(sentid_embedding)
         outfile = open('{}{}_{}_sentids_embeds.pkl'.format(sentids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
-        pickle.dump(all_user_sentids_embeddings,outfile)
+        pickle.dump(all_user_sent_ids_embeddings,outfile)
 
         os.chdir(sentids_embeds_filedir)
         toberemoved = sorted(os.listdir(sentids_embeds_filedir), key=os.path.getmtime)
@@ -732,6 +735,48 @@ class TermUnMarkSimilar(Resource):
 
 
 
+class DocSearch(Resource):
+
+    def __init__(self):
+        self.form = forms.DocSearchForm()
+        self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
+        self.data = None
+        self.question = None
+        self.answer = None
+
+    def get(self):
+        return make_response(render_template('docsearch.html', form= self.form, data = self.data, documents = self.documents,
+                                                            question = self.question, answer = self.answer))
+
+    def post(self):
+
+        global manager
+        if manager is None:
+            manager = doc_manager.DocManager(use_model)
+        
+        all_user_sent_ids_embeddings = []
+        for file in glob.glob('{}{}_*sentids*'.format(sentids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_sent_ids_embeddings = pickle.load(open(file, 'rb'))
+
+        self.question = [self.form.sentence.data]
+        embeddings = manager.sent_to_embeddings(self.question)
+
+        self.answer = manager.cos_sim(self.question,all_user_sent_ids_embeddings)
+        coss = [i[1] for i in self.answer]
+        sentids = [i[0] for i in self.answer]
+        
+        sentparadocs = [db_models.Sentparadoc.query.filter_by(id = id).one() for id in sentids]
+        self.data = zip(sentparadocs,coss)
+        
+
+        return make_response(render_template('docsearch.html', form= self.form, data = self.data, documents = self.documents,
+                                                            question = self.question, answer = self.answer))
+
+
+
+
+
 
 @app.route('/logout')
 def logout():
@@ -755,6 +800,7 @@ api.add_resource(TermDelete,'/term_delete', endpoint = 'term_delete')
 api.add_resource(DocDelete,'/doc_delete', endpoint = 'doc_delete')
 api.add_resource(TermUnDelete,'/term_undelete', endpoint = 'term_undelete')
 api.add_resource(AllTermDelete,'/all_term_delete', endpoint = 'all_term_delete')
+api.add_resource(DocSearch,'/doc_search', endpoint = 'doc_search')
 
 
 

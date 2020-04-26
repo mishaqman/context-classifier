@@ -1,0 +1,51 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<form method="POST" action="{{url_for('doc_search')}}" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        <legend>Search your documents</legend>
+
+        <div class="form-group">
+            {% if form.sentence.errors %}
+                {{ form.sentence(class="form-control form-control-md is-invalid", placeholder = 'Write a term or a sentence', autofocus = 'autofocus') }}
+                <div class="invalid-feedback">
+                    {% for error in form.sentence.errors %}
+                        <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {{ form.sentence(class="form-control form-control-md", placeholder = 'Write a term or a sentence', autofocus = 'autofocus') }}
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+{% if answer %}
+
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">Sentence</th>
+      <th style="width: auto;" scope="col">Document</th>
+      <th style="width: auto;" scope="col">Cos similarity</th>
+    </tr>
+  </thead>
+  {% for i in data %}
+  {% if i[1] > 0.2 %}
+  <tbody>
+    <tr>
+      <td>{{i[0].senttext}}</td>
+      <td>{{i[0].document.title}}</td>
+      <td>{{i[1]}}</td>
+    </tr>
+  </tbody>
+  {% endif %}
+  {% endfor %}
+</table>
+
+{% endif %}
+
+{% endblock content %}
+
