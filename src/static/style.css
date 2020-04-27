@@ -91,10 +91,10 @@ body {
 
 #document {
 	display: inline-block;
-	color: black;
+	color: white;
 	text-align: center;
 	vertical-align: middle;
-	background-color: #d1d8de;
+	background-color: #2e2c4d;
 	border: 1px solid transparent;
 	padding: 0.2rem 0.2rem;
 	margin: 0.2rem;

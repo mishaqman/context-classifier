@@ -28,6 +28,7 @@
 <table class="table">
   <thead class="thead-light">
     <tr>
+      <th style="width: auto;" scope="col">ID</th>
       <th style="width: auto;" scope="col">Document</th>
       <th style="width: auto;" scope="col">Date</th>
       <th style="width: auto;" scope="col">Total entities</th>
@@ -41,6 +42,7 @@
   <tbody>
     
     <tr>
+      <td>{{doc.id}}</td>
       <td><a href="{{url_for('document', docid=doc.id, doctitle=doc.title)}}"><span id="document">{{doc.title}}</span></a></td>
       <td>{{doc.date.strftime('%d %b %Y')}}</td>
       <td>{{total[0]}}</td>

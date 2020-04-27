@@ -48,7 +48,7 @@ class Chunking:
             {
                 'chunk'  : 'x',
                 'start'  : set(['$','CD']),
-                'middle' : set(['$','CD']),
+                'middle' : set(['$','CD','HYPH']),
                 'end'    : set(['CD','NN','NNS'])
             },
 
@@ -171,7 +171,7 @@ class Chunking:
                     chunk.append(word)
                 else:
                     if len(chunk) > 0 and chunk_type != 'o':
-                        chunk_text = self.normalize_text(' '.join([(c[0] if chunk_type == 'e' else c[1]) for c in chunk]))
+                        chunk_text = self.normalize_text(' '.join([(c[0] if (chunk_type == 'e' or chunk_type == 'x') else c[1]) for c in chunk]))
                         chunks.add((chunk_type,chunk_text))
                     chunk = [word]
                     chunk_type = word[3]
