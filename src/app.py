@@ -328,6 +328,9 @@ class Documents(Resource):
 
             thisdoc_sentparadoc = db_models.Sentparadoc.query.filter_by(docid = self.document.id).all()
 
+            # Here we need to already have kept track of the new terms to be added to the db and their association with sentparadoc
+            # Also adding to the db should be highly optimized by already knowing which terms exist and which do not
+            # which means all term not existing in the db should be added to it in one go instead of individual
             for sent in thisdoc_sentparadoc:
                 term_list = chunk.sent_terms(sent.senttext)
                 for term in term_list:
@@ -504,7 +507,10 @@ class Term(Resource):
                     related_terms[item.term] = 1
                 else:
                     related_terms[item.term] += 1
-        related_terms.pop(term)
+        try:
+            related_terms.pop(term)
+        except:
+            pass
         related_terms = sorted(related_terms.items(), key=lambda x:x[1], reverse=True)
 
         # similar terms using cosine similarity function

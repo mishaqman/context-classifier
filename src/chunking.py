@@ -54,7 +54,7 @@ class Chunking:
 
             {
                 'chunk'  : 'n',
-                'previous_prohibited': set(['VB','VBD','VBP','VBZ','RB','RBR','RBS','IN','TO']),
+                'previous_prohibited': set(['VB','VBD','VBP','VBZ','RB','RBR','RBS']),
                 'start'  : set(['NN','NNS','JJ','JJR','JJS','VBN','VBG','NNP','NNPS']),
                 'middle' : set(['NN','NNS','JJ','JJR','JJS','VBN','VBG','HYPH']),
                 'end'    : set(['NN','NNS'])

@@ -113,9 +113,9 @@
 {% if children %}
 {% for child in children %}
   <div>
-      {% if item[0].termtype == db_models.TermType.entity  %}
+      {% if child.term.termtype == db_models.TermType.entity  %}
         <a href="{{url_for('term', termid = child.term.id)}}"><span id="entity">{{child.term.label}}</span></a>
-      {% elif item[0].termtype == db_models.TermType.noun  %}
+      {% elif child.term.termtype == db_models.TermType.noun  %}
         <a href="{{url_for('term', termid = child.term.id)}}"><span id="term">{{child.term.label}}</span></a>
       {% else %}
         <a href="{{url_for('term', termid = child.term.id)}}"><span id="mnp">{{child.term.label}}</span></a>
