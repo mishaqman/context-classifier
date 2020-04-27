@@ -22,7 +22,11 @@
     <tr>
       <th style="width: auto;" scope="col">ParaID</th>
       <th style="width: auto;" scope="col">Sentence</th>
-      <th style="width: auto;" scope="col"><a id="term">Terms</a><a id="entity">Entities</a></th>
+      <th style="width: auto;" scope="col">
+        <a id="term">Terms</a>
+        <a id="entity">Entities</a>
+        <a id="mnp">Money Number Percent</a>
+      </th>
     </tr>
   </thead>
 
@@ -34,10 +38,12 @@
       <td>{{sent.senttext}}</td>
       <td>{% for term in sent.sentterms %}
         {% if (not term.term.removed) and (not term.term.fake)  %}
-      	{% if term.term.entity %}
+      	{% if term.term.termtype == db_models.TermType.entity %}
           <a id="entity" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
-        {% else %}
+        {% elif term.term.termtype == db_models.TermType.noun %}
           <a id="term" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
+        {% else %}
+          <a id="mnp" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
         {% endif %}
         {% endif %}
 

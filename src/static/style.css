@@ -134,3 +134,30 @@ body {
 	color: #ebd5d3;
 	background-color: #ebd5d3
 }
+
+
+#dekey {
+	display: inline-block;
+	color: black;
+	text-align: center;
+	vertical-align: middle;
+	background-color: #ede8d1;
+	border: 1px solid transparent;
+	padding: 0.2rem 0.2rem;
+	margin: 0.2rem;
+	line-height: 1.2;
+	border-radius: 0.25rem;
+}
+
+#mnp {
+	display: inline-block;
+	color: black;
+	text-align: center;
+	vertical-align: middle;
+	background-color: #f5cdc9;
+	border: 1px solid transparent;
+	padding: 0.2rem 0.2rem;
+	margin: 0.2rem;
+	line-height: 1.2;
+	border-radius: 0.25rem;
+}

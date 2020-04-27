@@ -5,6 +5,7 @@ from flask_restful import Resource, Api
 import utils, forms, doc_manager
 import os
 import math
+import random
 import db_models
 from datetime import datetime
 import pickle
@@ -40,35 +41,10 @@ sentids_embeds_filedir = os.path.join(os.getcwd(),'../data/sentids_embeds/')
 termids_embeds_filedir = os.path.join(os.getcwd(),'../data/termids_embeds/')
 use_model = os.path.join(os.getcwd(),'../../nlp_models/4')
 frequency_model = os.path.join(os.getcwd(),'../data/frequency.pkl')
+dataelement_model = os.path.join(os.getcwd(),'../data/dataelements.pkl')
 
 check_freq_file = pickle.load(open(frequency_model, 'rb'))
-
-def check_freq(file, term):
-    try:
-        data = file['e'][str(term)]
-    except:
-        data = None
-    return data
-
-# all_user_label_ids_embeddings = None
-# all_user_sent_ids_embeddings = None
-# all_user_termids_embeddings = None
-
-
-
-# dir_data = {
-#     'label' : [all_user_label_ids_embeddings, os.path.join(os.getcwd(),'../data/labelids_emdeds/')],
-#     'sent' : [all_user_sent_ids_embeddings, os.path.join(os.getcwd(),'../data/sentids_embeds/')],
-#     'term' : [all_user_termids_embeddings, os.path.join(os.getcwd(),'../data/termids_embeds/')]
-# }
-
-
-# def dir_data(what):
-#     data = dir_data.get(str(what))
-#     data[0] = []
-#     for file in glob.glob('{}{}_*{}ids*'.format(data[1],current_user.username, what)):
-#         if len(file) != 0:
-#             data[0] = pickle.load(open(file, 'rb'))
+check_de_file = pickle.load(open(dataelement_model, 'rb'))
 
 
 # ================ Initialize Classes and Variables  ================
@@ -79,12 +55,9 @@ Hence they should be kept None and only in the local functions, should they be i
 
 manager = None
 chatbot = None
-master_password = 'Maryland2020'
-
-# ================ Common layout items  ================
+master_password = 'KindessIsTheOnlyThingThatMatters'
 
 # ================ APIs ================
-
 
 
 class Register(Resource):
@@ -310,11 +283,10 @@ class Documents(Resource):
                 data[document] = {}
             total_sents = db_models.Sentparadoc.query.filter_by(docid = document.id).all()
             terms = db_models.Sentterm.query.filter(db_models.Sentterm.sentparadocid.in_([i.id for i in total_sents])).all()
-            total_legit_terms = len([i for i in terms if i.term.entity == False and (i.term.fake == False or i.term.removed == False)])
-            total_legit_entities = len([i for i in terms if i.term.entity == True and (i.term.fake == False or i.term.removed == False)])
-            total_fake_terms = len([i for i in terms if i.term.entity == False and (i.term.fake == True or i.term.removed == True)])
-            total_fake_entities = len([i for i in terms if i.term.entity == True and (i.term.fake == True or i.term.removed == True)])
-            data[document] = [total_legit_terms, total_legit_entities, total_fake_terms, total_fake_entities]
+            total_legit_entities = len([i for i in terms if i.term.termtype == db_models.TermType.entity  and (i.term.fake == False or i.term.removed == False)])
+            total_legit_terms = len([i for i in terms if i.term.termtype == db_models.TermType.noun  and (i.term.fake == False or i.term.removed == False)])
+            total_legit_mnps = len([i for i in terms if i.term.termtype == db_models.TermType.mnp  and (i.term.fake == False or i.term.removed == False)])
+            data[document] = [total_legit_entities, total_legit_terms, total_legit_mnps]
 
 
         return make_response(render_template('documents.html', form = self.form, documents = self.documents, sents = self.sents, data = data))
@@ -365,7 +337,7 @@ class Documents(Resource):
                         db_models.db.session.add(newsentterm)
                         db_models.db.session.commit()
                     else:
-                        newterm = db_models.Term(label = term[1], entity = 1 if term[0] == 'e' else 0, fake = 1 if len(term[1])<3 or len(term[1])>50 else 0)
+                        newterm = db_models.Term(label = term[1], termtype = db_models.TermType.entity if term[0] == 'e' else (db_models.TermType.noun if term[0]== 'n' else db_models.TermType.mnp), fake = 1 if len(term[1])<3 or len(term[1])>50 else 0)
                         db_models.db.session.add(newterm)
                         db_models.db.session.commit()
                         sentterm = db_models.Sentterm(sentparadocid = sent.id, termid = newterm.id)
@@ -379,17 +351,6 @@ class Documents(Resource):
 
             sentids_embeddings = list(zip(sentids, embeddings))
             all_user_sent_ids_embeddings.extend(sentids_embeddings)
-
-            # perhaps we will never do this one, cuz it's very expensive.
-
-            #now take each sentid_embedding of the document and compute cossim with learnt model's embedding:
-
-            # answer = manager.doc_cos_sim(sentids_embeddings, all_user_label_ids_embeddings)
-            # # doc_sentid_embed[0],  model_sentid_embed[0],  sim
-
-            # doc_sentids = [i[0] for i in answer]
-            # model_sentids = [i[1] for i in answer]
-            # coss = [i[2] for i in answer]
 
 
         # create term label embeddings for all terms that have no embeddings
@@ -441,7 +402,7 @@ class Document(Resource):
         
         document = db_models.Document.query.filter_by(userid = current_user.id).filter_by(id=docid).first()
         sentparadocs = db_models.Sentparadoc.query.filter_by(docid = document.id).all()
-        return make_response(render_template('document.html', document = document, documents = self.documents, sentparadocs = sentparadocs))
+        return make_response(render_template('document.html', document = document, documents = self.documents, sentparadocs = sentparadocs, db_models = db_models))
 
 
 class Terms(Resource):
@@ -468,9 +429,6 @@ class Terms(Resource):
         data = []
         count = 0
         for term in terms:
-            count +=1
-            if count == 10:
-                return make_response(render_template('terms.html', documents = self.documents, data=data))
             term_freq_docs = len(term.sentterms)
             term_freq = [] #freq, relevance
             try:
@@ -480,32 +438,41 @@ class Terms(Resource):
                     term_freq = [check_freq_file['n'][term.label],min(int(math.sqrt(term_freq_docs)/math.log(check_freq_file['n'][term.label])*100)/100,1)]
             except:
                 term_freq = [None,'User-doc-specific']
-            if len(all_user_label_ids_embeddings)>0:
-                for id_embed in all_user_termids_embeddings:
-                    if id_embed[0] == term.id:
-                        answer = manager.vec_vec_sim(id_embed[1],all_user_label_ids_embeddings)
-                        coss = [i[1] for i in answer]
-                        labels_ids = [i[0] for i in answer]
-                        labels = [db_models.Label.query.filter_by(id = id).one() for id in labels_ids]
-                        contexts = [label.context.name for label in labels]
+
+            try:
+                is_de = check_de_file['key_class'][term.label]
+                is_de = sorted(is_de.items(), key=lambda k:k[1], reverse = True)
+                is_de = [(i,float(int(j*100)/100)) for (i,j) in is_de]
+
+            except:
+                is_de = None
+
+
+            # if len(all_user_label_ids_embeddings)>0:
+            #     for id_embed in all_user_termids_embeddings:
+            #         if id_embed[0] == term.id:
+            #             answer = manager.vec_vec_sim(id_embed[1],all_user_label_ids_embeddings)
+            #             coss = [i[1] for i in answer]
+            #             labels_ids = [i[0] for i in answer]
+            #             labels = [db_models.Label.query.filter_by(id = id).one() for id in labels_ids]
+            #             contexts = [label.context.name for label in labels]
                     
-                        items = zip(contexts,coss)
-                        pair = {}
-                        for item in items:
-                            if item[0] not in pair:
-                                pair[item[0]] = item[1]
-                            else:
-                                pair[item[0]] += item[1]
+            #             items = zip(contexts,coss)
+            #             pair = {}
+            #             for item in items:
+            #                 if item[0] not in pair:
+            #                     pair[item[0]] = item[1]
+            #                 else:
+            #                     pair[item[0]] += item[1]
 
-                        summ = sum(pair.values())
-                        pair = {k:(utils.float_to_int(v/summ,2)) for k,v in pair.items()}
-                        pair = sorted(pair.items(), key = lambda x:x[1], reverse = True)[0]
-            else:
-                pair = (None,None)
+            #             summ = sum(pair.values())
+            #             pair = {k:(utils.float_to_int(v/summ,2)) for k,v in pair.items()}
+            #             pair = sorted(pair.items(), key = lambda x:x[1], reverse = True)[0]
+            pair = (None,None)
 
-            data.append((term, term_freq, pair))
+            data.append((term, term_freq, pair, is_de))
 
-        return make_response(render_template('terms.html', documents = self.documents, data=data))
+        return make_response(render_template('terms.html', documents = self.documents, data=data, db_models = db_models))
 
 
 class Term(Resource):
@@ -539,7 +506,6 @@ class Term(Resource):
                     related_terms[item.term] += 1
         related_terms.pop(term)
         related_terms = sorted(related_terms.items(), key=lambda x:x[1], reverse=True)
-
 
         # similar terms using cosine similarity function
         
@@ -580,6 +546,14 @@ class Term(Resource):
         except:
             term_freq = [None,None,term_freq_docs,'specific to user documents']
 
+        try:
+            is_de = check_de_file['key_class'][term.label]
+            is_de = sorted(is_de.items(), key=lambda k:k[1], reverse = True)
+            is_de = [(i,float(int(j*100)/100)) for (i,j) in is_de]
+
+        except:
+            is_de = None
+
         #compute domain relevance
 
         all_user_label_ids_embeddings = []
@@ -610,9 +584,8 @@ class Term(Resource):
 
         return make_response(render_template('term.html', term = term, documents = self.documents, similar_term_labels = similar_term_labels,
                                                     children=children, sentterms = sentterms, termdocs = termdocs, related_terms = related_terms,
-                                                    related_sentparadocs = related_sentparadocs, term_freq = term_freq, data = data))
-
-
+                                                    related_sentparadocs = related_sentparadocs, term_freq = term_freq, data = data, is_de = is_de,
+                                                    db_models = db_models))
 
 
 class DocDelete(Resource):
@@ -734,7 +707,6 @@ class TermUnMarkSimilar(Resource):
         return redirect(request.referrer)
 
 
-
 class DocSearch(Resource):
 
     def __init__(self):
@@ -772,7 +744,6 @@ class DocSearch(Resource):
 
         return make_response(render_template('docsearch.html', form= self.form, data = self.data, documents = self.documents,
                                                             question = self.question, answer = self.answer))
-
 
 
 

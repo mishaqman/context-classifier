@@ -2,10 +2,14 @@
 
 {% block content %}
 
-{% if term.entity %}
+{% if term.termtype == db_models.TermType.entity %}
 <legend id="entity">{{term.label}}</legend>
-{% else%}
+{% elif is_de %}
+<legend id="dekey">{{term.label}}</legend>
+{% elif term.termtype == db_models.TermType.noun %}
 <legend id="term">{{term.label}}</legend>
+{% else%}
+<legend id="mnp">{{term.label}}</legend>
 {% endif %}
 <!-- basic info related to a term -->
 
@@ -26,9 +30,23 @@
 {% endif %}
 
 
-<!-- operational risk relevance -->
+<!-- whether the term is a data element -->
+{% if is_de %}
+<hr id="line">
 
+{% for item in is_de %}
+  {% if item[0] == 'freq' %}
+  {% else %}
+  <span id="dekey">{{ item[0]}}</span> {{item[1]}}
+  {% endif %}
+{% endfor %}
+
+{% endif %}
+
+<!-- operational risk relevance -->
 {% if data %}
+<hr id="line">
+
 <h6 style="margin-top: 1rem;">
 
   <span>
@@ -73,11 +91,13 @@
 <h6 style="margin-top: 1rem;">Related Terms</h6>
 {% if related_terms %}
       {% for item in related_terms %}
-            {% if item[1] > 1 and item[0].fake == False and item[0].removed == False %}
-                  {% if item[0].entity  %}
+            {% if (item[1] > 0) and (item[0].fake == False) and (item[0].removed == False) %}
+                  {% if item[0].termtype == db_models.TermType.entity  %}
                     <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}} <b>{{item[1]}}</b></span></a>
-                  {% else %}
+                  {% elif item[0].termtype == db_models.TermType.noun  %}
                     <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+                  {% else %}
+                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="mnp">{{item[0].label}} <b>{{item[1]}}</b></span></a>
                   {% endif %}
             {% endif %}
       {% endfor %}
@@ -93,10 +113,12 @@
 {% if children %}
 {% for child in children %}
   <div>
-      {% if child.term.entity  %}
+      {% if item[0].termtype == db_models.TermType.entity  %}
         <a href="{{url_for('term', termid = child.term.id)}}"><span id="entity">{{child.term.label}}</span></a>
-      {% else %}
+      {% elif item[0].termtype == db_models.TermType.noun  %}
         <a href="{{url_for('term', termid = child.term.id)}}"><span id="term">{{child.term.label}}</span></a>
+      {% else %}
+        <a href="{{url_for('term', termid = child.term.id)}}"><span id="mnp">{{child.term.label}}</span></a>
       {% endif %}
       <form style="float: right; margin-top: 0rem;" method="post" action="{{url_for('unmark_similar', termid = child.term.id)}}">
         <input type="hidden" name="childid" value="{{term.id}}">
@@ -129,10 +151,12 @@ None
       <tbody>
         <tr>
           <td>
-            {% if item[0].entity  %}
+            {% if item[0].termtype == db_models.TermType.entity  %}
               <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}}</span></a>
-            {% else %}
+            {% elif item[0].termtype == db_models.TermType.noun  %}
               <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}}</span></a>
+            {% else %}
+              <a href="{{url_for('term', termid = item[0].id)}}"><span id="mnp">{{item[0].label}}</span></a>
             {% endif %}
           </td>
           

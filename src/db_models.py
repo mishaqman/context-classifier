@@ -2,6 +2,7 @@ from app import app
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from flask_login import UserMixin
+import enum
 
 
 
@@ -62,14 +63,21 @@ class Sentparadoc(db.Model):
     sentterms = db.relationship('Sentterm', backref='sentparadoc', lazy=True)
 
 
+class TermType(enum.Enum):
+    entity = 0
+    noun = 1
+    mnp = 2
+
+
 class Term(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     label = db.Column(db.String(1000), nullable=False)
-    entity = db.Column(db.Boolean, default=False, nullable=False)
+    termtype = db.Column(db.Enum(TermType), default=False, nullable=False)
     fake = db.Column(db.Boolean, default=False, nullable=False)
     removed = db.Column(db.Boolean, default=False, nullable=False)
     sentterms = db.relationship('Sentterm', backref='term', lazy=True)
     children = db.relationship('Termchild', backref='term', lazy=True)
+
 
 
 class Termchild(db.Model):

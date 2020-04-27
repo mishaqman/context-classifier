@@ -16,6 +16,7 @@
       <th style="width: auto;" scope="col">Domain-Relv</th>
       <th style="width: auto;" scope="col">Type</th>
       <th style="width: auto;" scope="col">Status</th>
+      <th style="width: auto;" scope="col">Data Element</th>
       <th style="width: auto;" scope="col">Action</th>
     </tr>
   </thead>
@@ -26,8 +27,17 @@
 
   <tbody>
     <tr>
+      {% if (item[0].fake == False) and (item[0].removed == False) %}
       <td>{{item[0].id}}</td>
-      <td><a href="{{url_for('term', termid = item[0].id)}}">{{item[0].label}}</a></td>
+      {% if item[0].termtype == db_models.TermType.entity %}
+        <td><a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}}</span></a></td>
+      {% elif item[3] %}
+        <td><a href="{{url_for('term', termid = item[0].id)}}"><span id="dekey">{{item[0].label}}</span></a></td>
+      {% elif item[0].termtype == db_models.TermType.noun %}
+        <td><a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}}</span></a></td>
+      {% else%}
+        <td><a href="{{url_for('term', termid = item[0].id)}}"><span id="mnp">{{item[0].label}}</span></a></td>
+      {% endif %}
       <td>{{item[0].sentterms | length }}</a></td>
       <td>{{item[1][0]}}</td>
       <td>{{item[1][1]}}</td>
@@ -37,16 +47,28 @@
       <td><span id="context">{{item[2][0]}} <b>{{item[2][1]}}</span></b></td>
       {% endif %}
 
-      {% if item[0].entity %}
+      {% if item[0].termtype == db_models.TermType.entity %}
       <td>Entity</td>
-      {% else %}
+      {% elif item[0].termtype == db_models.TermType.noun %}
       <td>Term</td>
+      {% else %}
+      <td>Money Number Percent</td>
       {% endif %}
 
       {% if item[0].removed %}
       <td>Deleted</td>
       {% else %}
       <td>Legit</td>
+      {% endif %}
+
+      {% if item[3] %}
+        {% if item[3][0][0] == 'freq' %}
+        <td><span id="dekey">{{item[3][1][0]}}</span> {{item[3][1][1]}}</td>
+        {% else %}
+        <td></td>
+        {% endif %}
+      {% else %}
+      <td></td>
       {% endif %}
       <td>
         <form style="float: center; margin-top: 0rem;" method="post" action="{{url_for('term_delete')}}">
@@ -56,6 +78,7 @@
           </button>
         </form>
       </td>
+      {% endif %}
     </tr>
     
   </tbody>

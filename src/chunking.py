@@ -26,7 +26,7 @@ class Chunking:
             akin alike regarding corresponding like said similar such suchlike
             that abounding countless manifold multiplied several umpteen uncounted
             varied various many many-sided unlike very other only less same few
-            certain this be have include become do relevant 
+            certain this be have include become do relevant following
             """.split())
 
         self.tokens_with_no_prefix_space = [',',';','.',"'s",':',')',']','}','%','-','?']
@@ -45,16 +45,16 @@ class Chunking:
             },
 
             
-            # {
-            #     'chunk'  : 'x',
-            #     'start'  : set(['CD']),
-            #     'middle' : set(['CD']),
-            #     'end'    : set(['CD'])
-            # },
+            {
+                'chunk'  : 'x',
+                'start'  : set(['$','CD']),
+                'middle' : set(['$','CD']),
+                'end'    : set(['CD','NN','NNS'])
+            },
 
             {
                 'chunk'  : 'n',
-                'previous_prohibited': set(['VB','VBD','VBP','VBZ','RB','RBR','RBS']),
+                'previous_prohibited': set(['VB','VBD','VBP','VBZ','RB','RBR','RBS','IN','TO']),
                 'start'  : set(['NN','NNS','JJ','JJR','JJS','VBN','VBG','NNP','NNPS']),
                 'middle' : set(['NN','NNS','JJ','JJR','JJS','VBN','VBG','HYPH']),
                 'end'    : set(['NN','NNS'])
