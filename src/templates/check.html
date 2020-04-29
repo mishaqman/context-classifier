@@ -1,0 +1,31 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">id</th>
+      <th style="width: auto;" scope="col">spd_id</th>
+      <th style="width: auto;" scope="col">termid</th>
+      <th style="width: auto;" scope="col">equivid</th>
+      <th style="width: auto;" scope="col">dupli</th>
+    </tr>
+  </thead>
+
+{% for item in data %}
+  <tbody>
+    <tr>
+      <td>{{item.id}}</td>
+      <td>{{item.sentparadocid}}</td>
+      <td>{{item.termid}}</td>
+      <td>{{item.equivalentid}}</td>
+      <td>{{item.duplicate}}</td>
+    </tr>
+  </tbody>
+{% endfor %}
+</table>
+
+{% endblock content %}
+
+

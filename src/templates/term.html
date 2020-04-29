@@ -2,6 +2,7 @@
 
 {% block content %}
 
+
 {% if term.termtype == db_models.TermType.entity %}
 <legend id="entity">{{term.label}}</legend>
 {% elif is_de %}
@@ -11,6 +12,7 @@
 {% else%}
 <legend id="mnp">{{term.label}}</legend>
 {% endif %}
+
 <!-- basic info related to a term -->
 
 <div>
@@ -88,48 +90,145 @@
 <!-- related terms based on co-occurrence -->
 <hr id="line">
 
-<h6 style="margin-top: 1rem;">Related Terms</h6>
+<h6 style="margin-top: 1rem;">Co-occurring Terms</h6>
 {% if related_terms %}
-      {% for item in related_terms %}
-            {% if (item[1] > 0) and (item[0].fake == False) and (item[0].removed == False) %}
-                  {% if item[0].termtype == db_models.TermType.entity  %}
-                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}} <b>{{item[1]}}</b></span></a>
-                  {% elif item[0].termtype == db_models.TermType.noun  %}
-                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}} <b>{{item[1]}}</b></span></a>
-                  {% else %}
-                    <a href="{{url_for('term', termid = item[0].id)}}"><span id="mnp">{{item[0].label}} <b>{{item[1]}}</b></span></a>
-                  {% endif %}
-            {% endif %}
-      {% endfor %}
+  {% for item in related_terms %}
+    {% if (item[1] > 0) and (item[0].fake == False) and (item[0].removed == False) %}
+      {% if item[0].termtype == db_models.TermType.entity  %}
+        <a href="{{url_for('term', termid = item[0].id)}}"><span id="entity">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+      {% elif item[0].termtype == db_models.TermType.noun  %}
+        <a href="{{url_for('term', termid = item[0].id)}}"><span id="term">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+      {% else %}
+        <a href="{{url_for('term', termid = item[0].id)}}"><span id="mnp">{{item[0].label}} <b>{{item[1]}}</b></span></a>
+      {% endif %}
+    {% endif %}
+  {% endfor %}
 {% else %}
   None
 {% endif %}
 
 
+
 <!-- merged items because the user merged them -->
 <hr id="line">
 
-<h6 style="margin-top: 1rem;">Merged Items</h6>
-{% if children %}
-{% for child in children %}
-  <div>
-      {% if child.term.termtype == db_models.TermType.entity  %}
-        <a href="{{url_for('term', termid = child.term.id)}}"><span id="entity">{{child.term.label}}</span></a>
-      {% elif child.term.termtype == db_models.TermType.noun  %}
-        <a href="{{url_for('term', termid = child.term.id)}}"><span id="term">{{child.term.label}}</span></a>
-      {% else %}
-        <a href="{{url_for('term', termid = child.term.id)}}"><span id="mnp">{{child.term.label}}</span></a>
-      {% endif %}
-      <form style="float: right; margin-top: 0rem;" method="post" action="{{url_for('unmark_similar', termid = child.term.id)}}">
-        <input type="hidden" name="childid" value="{{term.id}}">
-        <button type="submit">UnMark Similar</button>
-      </form>
-  </div>
+<h6 style="margin-top: 1rem;">Hierarchical relationships</h6>
+
+<!-- equivalent table section -->
+
+{% if equivalents %}
+
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">Equivalent Terms</th>
+      <th style="width: auto;" scope="col">Action</th>
+    </tr>
+  </thead>
+
+{% for equivalent in equivalents %}
+  <tbody>
+    <tr>
+      <td>
+        {% if equivalent.termtype == db_models.TermType.entity %}
+          <a href="{{url_for('term', termid = equivalent.id)}}"><span id="entity">{{equivalent.label}}</span></a>
+        {% elif equivalent.termtype == db_models.TermType.noun %}
+          <a href="{{url_for('term', termid = equivalent.id)}}"><span id="term">{{equivalent.label}}</span></a>
+        {% else %}
+          <a href="{{url_for('term', termid = equivalent.id)}}"><span id="mnp">{{equivalent.label}}</span></a>
+        {% endif %}
+      </td>
+
+      <td>
+        <form style="float: center; margin-top: 0rem;" method="post" action="{{url_for('unmark_equivalent', termid = term.id)}}">
+          <input type="hidden" name="equivalentid" value="{{equivalent.id}}">
+          <button type="submit">UnMark Equivalent</button>
+        </form>
+      </td>
+    </tr>
+  </tbody>
 {% endfor %}
+</table>
 {% else %}
-None
+  <div>Equivalent: None</div>
 {% endif %}
 
+<!-- children table section -->
+
+{% if children %}
+
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">Children Terms</th>
+      <th style="width: auto;" scope="col">Action</th>
+    </tr>
+  </thead>
+
+{% for child in children %}
+  <tbody>
+    <tr>
+      <td>
+        {% if child.termtype == db_models.TermType.entity %}
+          <a href="{{url_for('term', termid = child.id)}}"><span id="entity">{{child.label}}</span></a>
+        {% elif child.termtype == db_models.TermType.noun %}
+          <a href="{{url_for('term', termid = child.id)}}"><span id="term">{{child.label}}</span></a>
+        {% else %}
+          <a href="{{url_for('term', termid = child.id)}}"><span id="mnp">{{child.label}}</span></a>
+        {% endif %}
+      </td>
+
+      <td>
+        <form style="float: right; margin-top: 0rem;" method="post" action="{{url_for('unmark_child', termid = term.id)}}">
+          <input type="hidden" name="childid" value="{{child.id}}">
+          <button type="submit">UnMark Child</button>
+        </form>
+      </td>
+    </tr>
+  </tbody>
+{% endfor %}
+</table>
+{% else %}
+  <div>Children: None</div>
+{% endif %}
+
+<!-- parent table section -->
+
+{% if parents %}
+
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">Parents Terms</th>
+      <th style="width: auto;" scope="col">Action</th>
+    </tr>
+  </thead>
+
+{% for parent in parents %}
+  <tbody>
+    <tr>
+      <td>
+        {% if parent.termtype == db_models.TermType.entity %}
+          <a href="{{url_for('term', termid = parent.id)}}"><span id="entity">{{parent.label}}</span></a>
+        {% elif parent.termtype == db_models.TermType.noun %}
+          <a href="{{url_for('term', termid = parent.id)}}"><span id="term">{{parent.label}}</span></a>
+        {% else %}
+          <a href="{{url_for('term', termid = parent.id)}}"><span id="mnp">{{parent.label}}</span></a>
+        {% endif %}
+      </td>
+      <td>
+        <form style="float: right; margin-top: 0rem;" method="post" action="{{url_for('unmark_parent', termid = term.id)}}">
+          <input type="hidden" name="parentid" value="{{parent.id}}">
+          <button type="submit">UnMark Parent</button>
+        </form>
+      </td>
+    </tr>
+  </tbody>
+{% endfor %}
+</table>
+{% else %}
+  <div>Parents: None</div>
+{% endif %}
 
 <!-- similar terms based on cosine similarity -->
 <hr id="line">
@@ -139,15 +238,17 @@ None
     <table class="table">
       <thead class="thead-light">
         <tr>
-          <th style="width: auto;" scope="col">Similar terms - available for merging</th>
+          <th style="width: auto;" scope="col">Potential terms for relationship</th>
           <th style="width: auto;" scope="col">Similarity</th>
-          <th style="width: auto;" scope="col">Action</th>
+          <th style="width: auto;" scope="col">Upward</th>
+          <th style="width: auto;" scope="col">Downward</th>
+          <th style="width: auto;" scope="col">Equivalent</th>
         </tr>
       </thead>
 
 
     {% for item in similar_term_labels %}
-    {% if (item[1] < 0.999) and (item[1] > 0.399) %}
+    {% if (item[1] > 0.399) %}
       <tbody>
         <tr>
           <td>
@@ -163,9 +264,21 @@ None
           <td>{{item[1]}}</td>
         
           <td>
-            <form style="float: right; margin-top: 0rem;" method="post" action="{{url_for('mark_similar', termid = item[0].id)}}">
-              <input type="hidden" name="childid" value="{{term.id}}">
-              <button type="submit">Mark Similar</button>
+            <form style="float: center; margin-top: 0rem;" method="post" action="{{url_for('mark_parent', termid = term.id)}}">
+              <input type="hidden" name="parentid" value="{{item[0].id}}">
+              <button type="submit">Mark Parent</button>
+            </form>
+          </td>
+          <td>
+            <form style="float: center; margin-top: 0rem;" method="post" action="{{url_for('mark_child', termid = term.id)}}">
+              <input type="hidden" name="childid" value="{{item[0].id}}">
+              <button type="submit">Mark Child</button>
+            </form>
+          </td>
+          <td>
+            <form style="float: center; margin-top: 0rem;" method="post" action="{{url_for('mark_equivalent', termid = term.id)}}">
+              <input type="hidden" name="equivalentid" value="{{item[0].id}}">
+              <button type="submit">Mark Equivalent</button>
             </form>
           </td>
         </tr>
@@ -176,12 +289,13 @@ None
 
 
 {% else %}
-  None
+  <p>None</p>
 {% endif %}
 
 <!-- related sentences based on cosine similarity -->
+<hr id="line">
 
-<h6 style="margin-top: 1rem;">Related sentences </h6>
+<h6 style="margin-top: 1rem;">Interesting sentences found in {{current_user.  username}}'s documents </h6>
 <table class="table">
   <thead class="thead-light">
     <tr>

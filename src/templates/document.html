@@ -36,8 +36,9 @@
     <tr>
       <td>{{sent.paraid}}</td>
       <td>{{sent.senttext}}</td>
-      <td>{% for term in sent.sentterms %}
-        {% if (not term.term.removed) and (not term.term.fake)  %}
+      <td>
+        {% for term in sent.sentterms %}
+        {% if (not term.duplicate) and (not term.term.removed) and (not term.term.fake)  %}
       	{% if term.term.termtype == db_models.TermType.entity %}
           <a id="entity" href="{{url_for('term', termid = term.term.id)}}"><b>{{term.term.label}}</b></a>
         {% elif term.term.termtype == db_models.TermType.noun %}

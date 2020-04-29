@@ -40,8 +40,8 @@ labelids_embeds_filedir = os.path.join(os.getcwd(),'../data/labelids_emdeds/')
 sentids_embeds_filedir = os.path.join(os.getcwd(),'../data/sentids_embeds/')
 termids_embeds_filedir = os.path.join(os.getcwd(),'../data/termids_embeds/')
 use_model = os.path.join(os.getcwd(),'../../nlp_models/4')
-frequency_model = os.path.join(os.getcwd(),'../data/frequency.pkl')
-dataelement_model = os.path.join(os.getcwd(),'../data/dataelements.pkl')
+frequency_model = os.path.join(os.getcwd(),'../data/other_models/frequency.pkl')
+dataelement_model = os.path.join(os.getcwd(),'../data/other_models/dataelements.pkl')
 
 check_freq_file = pickle.load(open(frequency_model, 'rb'))
 check_de_file = pickle.load(open(dataelement_model, 'rb'))
@@ -491,7 +491,19 @@ class Term(Resource):
         term = db_models.Term.query.filter_by(id=termid).first()
         sentterms = db_models.Sentterm.query.filter_by(termid = term.id).all()
 
-        children = db_models.Termchild.query.filter_by(parentid = term.id).all()
+        childrenids = [i.childid for i in db_models.Termchild.query.filter_by(parentid = term.id).all()]
+        children = [db_models.Term.query.filter_by(id = id).one() for id in childrenids]
+
+        parentids = [i.parentid for i in db_models.Termchild.query.filter_by(childid = term.id).all()]
+        parents = [db_models.Term.query.filter_by(id = id).one() for id in parentids]
+
+        equivalentids = [i.equivalentid for i in db_models.EquivalentTerm.query.filter_by(basetermid = term.id).all()]
+        equivalentterms = [db_models.Term.query.filter_by(id = id).one() for id in equivalentids]
+        basetermids = [i.basetermid for i in db_models.EquivalentTerm.query.filter_by(equivalentid = term.id).all()]
+        baseterms = [db_models.Term.query.filter_by(id = id).one() for id in basetermids]
+
+        equivalents = list(set().union(baseterms, equivalentterms))
+
 
         termdocs = {}
         for sentterm in sentterms:
@@ -524,7 +536,8 @@ class Term(Resource):
         coss = [i[1] for i in answer]
         terms_ids = [i[0] for i in answer]
         similar_terms = [db_models.Term.query.filter_by(id = id).first() for id in terms_ids]
-        similar_term_labels = list(zip(similar_terms,coss))[:3]
+        similar_term_labels = list(zip(similar_terms,coss))
+        similar_term_labels = [i for i in similar_term_labels if i[0] not in [p for p in parents] and i[0] not in [c for c in children] and i[0] not in [e for e in equivalents] and i[0] != term][:4]
 
         # similar sentences using cosine similarity
         
@@ -589,9 +602,9 @@ class Term(Resource):
         data = sorted(data.items(), key = lambda x:x[1], reverse = True)[:3]
 
         return make_response(render_template('term.html', term = term, documents = self.documents, similar_term_labels = similar_term_labels,
-                                                    children=children, sentterms = sentterms, termdocs = termdocs, related_terms = related_terms,
+                                                    sentterms = sentterms, termdocs = termdocs, related_terms = related_terms,
                                                     related_sentparadocs = related_sentparadocs, term_freq = term_freq, data = data, is_de = is_de,
-                                                    db_models = db_models))
+                                                    db_models = db_models, children=children, parents = parents, equivalents = equivalents))
 
 
 class DocDelete(Resource):
@@ -675,6 +688,11 @@ class AllTermDelete(Resource):
             db_models.db.session.delete(child)
         db_models.db.session.commit()
 
+        equivalents = db_models.EquivalentTerm.query.all()
+        for eq in equivalents:
+            db_models.db.session.delete(eq)
+        db_models.db.session.commit()
+
         for term in terms:
             db_models.db.session.delete(term)
         db_models.db.session.commit()
@@ -691,26 +709,88 @@ class TermUnDelete(Resource):
         return redirect(url_for('terms'))
 
 
-class TermMarkSimilar(Resource):
+class MarkChild(Resource):
     def post(self, termid):
-        parentterm = db_models.Term.query.filter_by(id = termid).first()
         childid = request.form['childid']
-        childterm = db_models.Term.query.filter_by(id = childid).first()
-        termchild = db_models.Termchild(parentid = childterm.id, childid = parentterm.id)
+        termchild = db_models.Termchild(childid = childid, parentid = termid)
         db_models.db.session.add(termchild)
         db_models.db.session.commit()
         return redirect(request.referrer)
 
 
-class TermUnMarkSimilar(Resource):
+class UnMarkChild(Resource):
     def post(self, termid):
-        parentterm = db_models.Term.query.filter_by(id = termid).first()
         childid = request.form['childid']
-        childterm = db_models.Term.query.filter_by(id = childid).first()
-        termchild = db_models.Termchild.query.filter_by(parentid = childterm.id).first()
+        termchild = db_models.Termchild.query.filter_by(childid = childid, parentid = termid).first()
         db_models.db.session.delete(termchild)
         db_models.db.session.commit()
         return redirect(request.referrer)
+
+
+class MarkParent(Resource):
+    def post(self, termid):
+        parentid = request.form['parentid']
+        termchild = db_models.Termchild(childid = termid, parentid = parentid)
+        db_models.db.session.add(termchild)
+        db_models.db.session.commit()
+        return redirect(request.referrer)
+
+
+class UnMarkParent(Resource):
+    def post(self, termid):
+        parentid = request.form['parentid']
+        termchild = db_models.Termchild.query.filter_by(childid = termid, parentid = parentid).first()
+        db_models.db.session.delete(termchild)
+        db_models.db.session.commit()
+        return redirect(request.referrer)
+
+
+
+class MarkEquivalent(Resource):
+    def post(self, termid):
+        equivalentid = request.form['equivalentid']
+        equivalentterm = db_models.EquivalentTerm(basetermid = termid, equivalentid = equivalentid)
+        db_models.db.session.add(equivalentterm)
+        sentterms = db_models.Sentterm.query.filter_by(termid = equivalentid).all()
+
+        for sentterm in sentterms:
+            sentterm.equivalentid = equivalentid
+            sentterms_with_termid = db_models.Sentterm.query.filter_by(termid = termid).all()
+
+            if sentterm in sentterms_with_termid:
+                sentterm.duplicate = 1
+            else:
+                sentterm.termid = termid
+        db_models.db.session.commit()
+        return redirect(request.referrer)
+
+
+class UnMarkEquivalent(Resource):
+    def post(self, termid):
+        equivalentid = request.form['equivalentid']
+        try:
+            base = db_models.EquivalentTerm.query.filter_by(basetermid = termid, equivalentid = equivalentid).first()
+            sentterms = db_models.Sentterm.query.filter_by(termid = termid, equivalentid = equivalentid).all()
+            for sentterm in sentterms:
+                sentterm.termid = sentterm.equivalentid
+                sentterm.equivalentid = None
+                sentterm.duplicate = 0
+            db_models.db.session.delete(base)
+            db_models.db.session.commit()
+        except:
+            equal = db_models.EquivalentTerm.query.filter_by(basetermid = equivalentid, equivalentid = termid).first()
+            sentterms = db_models.Sentterm.query.filter_by(termid = equivalentid, equivalentid = termid).all()
+            for sentterm in sentterms:
+
+                sentterm.termid = termid
+                sentterm.equivalentid = None
+                sentterm.duplicate = 0
+            db_models.db.session.delete(equal)
+            db_models.db.session.commit()
+        else:
+            pass
+        return redirect(request.referrer)
+
 
 
 class DocSearch(Resource):
@@ -753,6 +833,10 @@ class DocSearch(Resource):
 
 
 
+class Check(Resource):
+    def get(self):
+        data = db_models.Sentterm.query.all()
+        return make_response(render_template('check.html', data = data))
 
 
 @app.route('/logout')
@@ -770,14 +854,22 @@ api.add_resource(ContextDistribution, '/contextdistribution', endpoint = 'contex
 api.add_resource(Documents, '/documents', endpoint = 'documents')
 api.add_resource(Document, '/document/<int:docid>/<string:doctitle>', endpoint = 'document')
 api.add_resource(Term, '/term/<int:termid>', endpoint = 'term')
-api.add_resource(TermMarkSimilar,'/mark_similar/<int:termid>', endpoint = 'mark_similar')
-api.add_resource(TermUnMarkSimilar,'/unmark_similar/<int:termid>', endpoint = 'unmark_similar')
+api.add_resource(MarkChild,'/mark_child/<int:termid>', endpoint = 'mark_child')
+api.add_resource(UnMarkChild,'/unmark_child/<int:termid>', endpoint = 'unmark_child')
+
+api.add_resource(MarkParent,'/mark_parent/<int:termid>', endpoint = 'mark_parent')
+api.add_resource(UnMarkParent,'/unmark_parent/<int:termid>', endpoint = 'unmark_parent')
+
+api.add_resource(MarkEquivalent,'/mark_equivalent/<int:termid>', endpoint = 'mark_equivalent')
+api.add_resource(UnMarkEquivalent,'/unmark_equivalent/<int:termid>', endpoint = 'unmark_equivalent')
+
 api.add_resource(Terms, '/terms', endpoint = 'terms')
 api.add_resource(TermDelete,'/term_delete', endpoint = 'term_delete')
 api.add_resource(DocDelete,'/doc_delete', endpoint = 'doc_delete')
 api.add_resource(TermUnDelete,'/term_undelete', endpoint = 'term_undelete')
 api.add_resource(AllTermDelete,'/all_term_delete', endpoint = 'all_term_delete')
 api.add_resource(DocSearch,'/doc_search', endpoint = 'doc_search')
+# api.add_resource(Check,'/check', endpoint = 'check')
 
 
 

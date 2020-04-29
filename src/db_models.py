@@ -76,16 +76,21 @@ class Term(db.Model):
     fake = db.Column(db.Boolean, default=False, nullable=False)
     removed = db.Column(db.Boolean, default=False, nullable=False)
     sentterms = db.relationship('Sentterm', backref='term', lazy=True)
-    children = db.relationship('Termchild', backref='term', lazy=True)
-
 
 
 class Termchild(db.Model):
     parentid = db.Column(db.Integer, nullable=False, primary_key=True)
-    childid = db.Column(db.Integer, db.ForeignKey('term.id'), nullable=False, primary_key=True)
+    childid = db.Column(db.Integer, nullable=False, primary_key=True)
+
+
+class EquivalentTerm(db.Model):
+    basetermid = db.Column(db.Integer, nullable=False, primary_key=True)
+    equivalentid = db.Column(db.Integer, nullable=False, primary_key=True)
 
 
 class Sentterm(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sentparadocid = db.Column(db.Integer, db.ForeignKey('sentparadoc.id'), nullable=False)
     termid = db.Column(db.Integer, db.ForeignKey('term.id'), nullable=False)
+    equivalentid = db.Column(db.Integer, nullable=True)
+    duplicate = db.Column(db.Boolean, default=False, nullable=False)
