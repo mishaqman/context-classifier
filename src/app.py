@@ -745,7 +745,6 @@ class UnMarkParent(Resource):
         return redirect(request.referrer)
 
 
-
 class MarkEquivalent(Resource):
     def post(self, termid):
         equivalentid = request.form['equivalentid']
@@ -755,9 +754,11 @@ class MarkEquivalent(Resource):
 
         for sentterm in sentterms:
             sentterm.equivalentid = equivalentid
-            sentterms_with_termid = db_models.Sentterm.query.filter_by(termid = termid).all()
-
-            if sentterm in sentterms_with_termid:
+            sentparadoc = db_models.Sentparadoc.query.filter_by(id = sentterm.sentparadocid).first()
+            sentterms_in_current_sentparadoc = db_models.Sentterm.query.filter_by(sentparadocid = sentparadoc.id).all()
+            termids = [i.termid for i in sentterms_in_current_sentparadoc if i.termid == termid]
+            if termid in termids:
+                sentterm.termid = termid
                 sentterm.duplicate = 1
             else:
                 sentterm.termid = termid
@@ -781,7 +782,6 @@ class UnMarkEquivalent(Resource):
             equal = db_models.EquivalentTerm.query.filter_by(basetermid = equivalentid, equivalentid = termid).first()
             sentterms = db_models.Sentterm.query.filter_by(termid = equivalentid, equivalentid = termid).all()
             for sentterm in sentterms:
-
                 sentterm.termid = termid
                 sentterm.equivalentid = None
                 sentterm.duplicate = 0
@@ -869,7 +869,7 @@ api.add_resource(DocDelete,'/doc_delete', endpoint = 'doc_delete')
 api.add_resource(TermUnDelete,'/term_undelete', endpoint = 'term_undelete')
 api.add_resource(AllTermDelete,'/all_term_delete', endpoint = 'all_term_delete')
 api.add_resource(DocSearch,'/doc_search', endpoint = 'doc_search')
-# api.add_resource(Check,'/check', endpoint = 'check')
+api.add_resource(Check,'/check', endpoint = 'check')
 
 
 
