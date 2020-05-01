@@ -1,0 +1,40 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+
+<legend>{{context.name}}</legend>
+
+<table class="table">
+  <thead class="thead-light">
+    <tr>
+      <th style="width: auto;" scope="col">ID</th>
+      <th style="width: auto;" scope="col">Date</th>
+      <th style="width: 60%;" scope="col">Lable Text</th>
+      <th style="width: 10%;" scope="col">Action</th>
+    </tr>
+  </thead>
+
+  {% for label in context.labels %}
+  <tbody>
+    
+    <tr>
+      <td>{{label.id}}</td>
+      <td>{{label.context.date.strftime('%d %b %Y')}}</td>
+      <td>{{label.text }}</td>
+      <td>
+        <form style="float: center; margin-top: 0rem;" method="post" action="{{url_for('label_delete')}}">
+           <input type="hidden" name="labelid" value="{{label.id}}">
+           <button type="submit" style="border: 0; background: none;">
+              <i class="fa fa-trash-o"></i>
+           </button>
+        </form>
+      </td>
+    </tr>
+    
+  </tbody>
+  {% endfor %}
+
+</table>
+
+{% endblock content %}

@@ -3,54 +3,33 @@
 {% block content %}
 
 
+<legend>List of contexts for {{domain.name}}</legend>
 
-
-<form method="POST" action="{{url_for('domain', domainid = domain.id)}}" enctype="multipart/form-data">
-    {{ form.hidden_tag() }}
-    <div class="form-group">
-        <legend>Upload your labelled data for <strong>{{domain.name}}</strong></legend>
-
-        <div class="form-group">
-            {{ form.file(class="form-control-file col-md") }}
-            {% if form.file.errors %}
-                {% for error in form.file.errors %}
-                    <span class="text-danger">{{ error }}</span>
-                {% endfor %}
-            {% endif %}
-        </div>
-        
-    </div>
-    <div class="form-group">
-        {{ form.submit(class="btn btn-primary") }}
-    </div>
-</form>
-
-
-{% if labels|length > 0 %}
-
-<legend>Uploaded Lables</legend>
 <table class="table">
   <thead class="thead-light">
     <tr>
-      <th style="width: auto;" scope="col">Context</th>
-      <th style="width: auto;" scope="col">Label ID</th>
-      <th style="width: auto;" scope="col">Label Text</th>
+      <th style="width: auto;" scope="col">ID</th>
+      <th style="width: auto;" scope="col">Context name</th>
+      <th style="width: auto;" scope="col">Date</th>
+      <th style="width: auto;" scope="col">Total labels</th>
+      <th style="width: auto;" scope="col">Action</th>
     </tr>
   </thead>
 
-
-{% for label in labels %}
+  {% for context in contexts %}
   <tbody>
+    
     <tr>
-      <td>{{label.context.name}}</td>
-      <td>{{label.id}}</td>
-      <td>{{label.text}}</td>
+      <td>{{context.id}}</td>
+      <td><a href="{{url_for('context', contextid = context.id)}}"><span id="context">{{context.name}}</span></a></td>
+      <td>{{context.date.strftime('%d %b %Y')}}</td>
+      <td>{{context.labels | length }}</td>
+      <td>delete</td>
     </tr>
+    
   </tbody>
   {% endfor %}
+
 </table>
-
-{% endif %}
-
 
 {% endblock content %}

@@ -104,41 +104,34 @@ class Login(Resource):
             return redirect(request.url)
 
 
+class Domain(Resource):
+
+    def get(self, domainid):
+        domain = db_models.Domain.query.filter_by(id = domainid, userid = current_user.id).first()
+        contexts = db_models.Context.query.filter_by(domainid = domain.id).all()
+        return make_response(render_template('domain.html', domain = domain, contexts = contexts))
+
+
+class Context(Resource):
+
+    def get(self, contextid):
+        context = db_models.Context.query.filter_by(id = contextid).first()
+        return make_response(render_template('context.html', context = context))
+
+
 class Domains(Resource):
 
     def __init__(self):
-        self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
+        
+        self.form = forms.LabelUploadForm()
         self.domains = db_models.Domain.query.filter_by(userid = current_user.id).all()
-        self.form = forms.DomainForm()
 
     def get(self):
-        return make_response(render_template('domains.html', form = self.form, domains = self.domains, documents = self.documents))
+        
+        return make_response(render_template('domains.html', form= self.form, domains = self.domains))
+
 
     def post(self):
-        name = self.form.name.data
-        domain = db_models.Domain(name = name, userid = current_user.id)
-        db_models.db.session.add(domain)
-        db_models.db.session.commit()
-        return redirect(request.url)
-
-
-class Domain(Resource):
-
-    def __init__(self):
-        
-        self.documents = db_models.Document.query.filter_by(userid=current_user.id).order_by(db_models.Document.date.desc())
-        self.form = forms.LabelUploadForm()
-
-    def get(self, domainid):
-        self.domains = db_models.Domain.query.filter_by(userid = current_user.id).all()
-        self.domain = db_models.Domain.query.filter_by(id = domainid, userid = current_user.id).first()
-        self.contexts = db_models.Context.query.filter_by(domainid = domainid).all()
-        self.labels = db_models.Label.query.filter(db_models.Label.contextid.in_([i.id for i in self.contexts])).all()[:500]
-        return make_response(render_template('domain.html', form= self.form, domains = self.domains,
-                                            domain = self.domain, labels = self.labels, contexts = self.contexts, documents = self.documents ))
-
-
-    def post(self, domainid):
 
         global manager
         if manager is None:
@@ -150,18 +143,29 @@ class Domain(Resource):
                 all_user_label_ids_embeddings = pickle.load(open(file, 'rb'))
 
         csvfile = self.form.file.data
-        data = utils.read_context_label_csv_file(csvfile)
-        for context, labels in data.items():
-            # if context not in [i.name for i in self.contexts] or len(self.contexts) == 0 :
-            new_context = db_models.Context(name = context, domainid = domainid)
-            db_models.db.session.add(new_context)
-            db_models.db.session.commit()
-            for label in labels:
-                new_label = db_models.Label(text = label, contextid = new_context.id)
-                db_models.db.session.add(new_label)
-            db_models.db.session.commit()
-        contexts = db_models.Context.query.filter_by(domainid = domainid).all()
-        these_labels = db_models.Label.query.filter(db_models.Label.contextid.in_([i.id for i in contexts])).all()
+        data = utils.read_multi_domain_context_label_csv_file(csvfile)
+        for domain, con_labs in data.items():
+            if domain not in [d.name for d in self.domains]:
+                new_domain = db_models.Domain(name = domain, userid = current_user.id)
+                db_models.db.session.add(new_domain)
+                db_models.db.session.commit()
+            else:
+                new_domain = db_models.Domain.query.filter_by(name = domain, userid = current_user.id).first()
+            contexts = db_models.Context.query.filter_by(domainid = new_domain.id).all()
+            for context, labels in con_labs.items():
+                if context not in [c.name for c in contexts]:
+                    new_context = db_models.Context(name = context, domainid = new_domain.id)
+                    db_models.db.session.add(new_context)
+                    db_models.db.session.commit()
+                else:
+                    new_context = db_models.Context.query.filter_by(name = context, domainid = new_domain.id).first()
+                for label in labels:
+                    new_label = db_models.Label(text = label, contextid = new_context.id)
+                    db_models.db.session.add(new_label)
+                db_models.db.session.commit()
+        
+        
+        these_labels = db_models.Label.query.filter_by(embedding = False).all()
         labels_ids = [i.id for i in these_labels]
         label_texts = [i.text for i in these_labels]
         embeddings = manager.sent_to_embeddings(label_texts)
@@ -196,7 +200,7 @@ class DomainDelete(Resource):
         for item in labels:
             for label_ids_embedding in all_user_label_ids_embeddings:
                 if label_ids_embedding[0] == item.id:
-                    all_user_label_ids_embeddings.remove(label_ids_embeddings)
+                    all_user_label_ids_embeddings.remove(label_ids_embedding)
         outfile = open('{}{}_{}_labelids_embeds.pkl'.format(labelids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
         pickle.dump(all_user_label_ids_embeddings,outfile)
         os.chdir(labelids_embeds_filedir)
@@ -212,6 +216,36 @@ class DomainDelete(Resource):
         db_models.db.session.commit()
         flash('Domain successfully deleted', 'info')
         return redirect(url_for('domains'))
+
+
+
+class ContextDelete(Resource):
+    pass
+
+
+class LabelDelete(Resource):
+
+    def post(self):
+        labelid = request.form['labelid']
+        label = db_models.Label.query.filter_by(id = labelid).first()
+
+        all_user_label_ids_embeddings = []
+        for file in glob.glob('{}{}_*labelids*'.format(labelids_embeds_filedir,current_user.username)):
+            if len(file) != 0:
+                all_user_label_ids_embeddings = pickle.load(open(file, 'rb'))
+
+        all_user_label_ids_embeddings.remove([i for i in all_user_label_ids_embeddings if i[0] == label.id][0])
+        outfile = open('{}{}_{}_labelids_embeds.pkl'.format(labelids_embeds_filedir,current_user.username,datetime.now().strftime('%Y%m%d_%H%M%S')), 'wb')
+        pickle.dump(all_user_label_ids_embeddings,outfile)
+        os.chdir(labelids_embeds_filedir)
+        toberemoved = sorted(os.listdir(labelids_embeds_filedir), key=os.path.getmtime)
+        toberemoved = [i for i in toberemoved if str(i.split('_')[0])==current_user.username][:-1]
+        for file in toberemoved:
+            os.remove(file)
+        db_models.db.session.delete(label)
+        db_models.db.session.commit()
+        flash('Label successfully deleted', 'info')
+        return redirect(request.referrer)
 
 
 class ContextDistribution(Resource):
@@ -247,7 +281,9 @@ class ContextDistribution(Resource):
         labels_ids = [i[0] for i in self.answer]
         
         labels = [db_models.Label.query.filter_by(id = id).one() for id in labels_ids]
-        contexts = [label.context.name for label in labels]
+        contexts = [label.context for label in labels]
+        # domainids = [i.domain.id for i in contexts]
+        # domains = [db_models.Domain.query.filter_by(id = id).one() for id in contexts]
         sentences = zip(labels,coss)
         
         items = zip(contexts,coss)
@@ -260,7 +296,7 @@ class ContextDistribution(Resource):
 
         summ = sum(self.data.values())
         self.data = {k:(utils.float_to_int(v/summ,4)) for k,v in self.data.items()}
-        self.data = sorted(self.data.items(), key = lambda x:x[1], reverse = True)[:3]
+        self.data = sorted(self.data.items(), key = lambda x:x[1], reverse = True)
 
         return make_response(render_template('contextdistribution.html', form= self.form, data = self.data, documents = self.documents,
                                                             question = self.question, answer = self.answer, sentences = sentences))
@@ -848,8 +884,12 @@ def logout():
 api.add_resource(Register,'/','/register', endpoint = 'register')
 api.add_resource(Login,'/login', endpoint = 'login')
 api.add_resource(Domains, '/domains', endpoint = 'domains')
+
 api.add_resource(DomainDelete,'/domain_delete', endpoint = 'domain_delete')
+api.add_resource(LabelDelete,'/label_delete', endpoint = 'label_delete')
 api.add_resource(Domain, '/domain/<int:domainid>', endpoint = 'domain')
+api.add_resource(Context, '/context/<int:contextid>', endpoint = 'context')
+
 api.add_resource(ContextDistribution, '/contextdistribution', endpoint = 'contextdistribution')
 api.add_resource(Documents, '/documents', endpoint = 'documents')
 api.add_resource(Document, '/document/<int:docid>/<string:doctitle>', endpoint = 'document')

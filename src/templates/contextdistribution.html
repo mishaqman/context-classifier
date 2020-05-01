@@ -28,6 +28,7 @@
 <table class="table">
   <thead class="thead-light">
     <tr>
+      <th style="width: auto;" scope="col">Domain</th>
       <th style="width: auto;" scope="col">Context</th>
       <th style="width: auto;" scope="col">Cos similarity</th>
     </tr>
@@ -36,7 +37,8 @@
   {% for i in data %}
   <tbody>
     <tr>
-      <td>{{i[0]}}</td>
+      <td><a href="{{url_for('domain', domainid = i[0].domain.id)}}"><span id="domain">{{i[0].domain.name}}</span></a></td>
+      <td><a href="{{url_for('context', contextid = i[0].id)}}"><span id="context">{{i[0].name}}</span></a></td>
       <td>{{i[1]}}</td>
     </tr>
   </tbody>
@@ -60,7 +62,7 @@
     <tr>
       <td>{{item[0].text}}</td>
       <td>{{item[1]}}</td>
-      <td>{{item[0].context.name}}</td>
+      <td><a href="{{url_for('context', contextid = item[0].context.id)}}"><span id="context">{{item[0].context.name}}</span></a></td>
     </tr>
   </tbody>
   {% endif %}

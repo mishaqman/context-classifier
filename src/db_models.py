@@ -24,7 +24,7 @@ class User(db.Model, UserMixin):
 
 class Domain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(20), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
     date = db.Column(db.DateTime, nullable=False, default=datetime.now)
     contexts = db.relationship('Context', backref='domain', lazy=True)
     userid = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -42,6 +42,7 @@ class Context(db.Model):
 class Label(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(2000), nullable=False)
+    embedding = db.Column(db.Boolean, default=False, nullable=False)
     contextid = db.Column(db.Integer, db.ForeignKey('context.id'), nullable=False)
 
 

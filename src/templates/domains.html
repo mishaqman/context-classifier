@@ -5,26 +5,24 @@
 <form method="POST" action="{{url_for('domains')}}" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
     <div class="form-group">
-        <legend>Create a domain</legend>
+        <legend>Upload your labelled data</legend>
 
         <div class="form-group">
-            {% if form.name.errors %}
-                {{ form.name(class="form-control form-control-md is-invalid", placeholder = 'Domain Name', autofocus = 'autofocus') }}
-                <div class="invalid-feedback">
-                    {% for error in form.name.errors %}
-                        <span>{{ error }}</span>
-                    {% endfor %}
-                </div>
-            {% else %}
-                {{ form.name(class="form-control form-control-md", placeholder = 'Domain Name', autofocus = 'autofocus') }}
+            {{ form.file(class="form-control-file col-md") }}
+            {% if form.file.errors %}
+                {% for error in form.file.errors %}
+                    <span class="text-danger">{{ error }}</span>
+                {% endfor %}
             {% endif %}
         </div>
-
         
+    </div>
+    <div class="form-group">
+        {{ form.submit(class="btn btn-primary") }}
     </div>
 </form>
 
-
+{% if domains %}
 <legend>All domains</legend>
 <table class="table">
   <thead class="thead-light">
@@ -45,9 +43,7 @@
       <td>{{domain.date.strftime('%d %b %Y')}}</td>
       <td>
         {% for context in domain.contexts %}
-        {% if context.name != 'NON' %}
-            <span id="context">{{context.name}}</span>
-        {% endif %}
+            <a href="{{url_for('context', contextid = context.id)}}"><span id="context">{{context.name}} <strong>{{context.labels | length}}</strong></span></a>
         {% endfor %}
       </td>
       <td>
@@ -62,6 +58,7 @@
   </tbody>
   {% endfor %}
 </table>
+{% endif %}
 
 
 {% endblock content %}
