@@ -55,7 +55,7 @@
     Operational Risk Relevance
   </span>
     <b>
-      {% if (data[0][0] == 'NON') and (data[0][1] > 0.5) %}
+      {% if (data[0][0].split('_')[1] == 'NON') and (data[0][1] > 0.5) %}
         Not relevant
       {% elif (data[0][0] == 'NON') and (data[0][1] <= 0.5) and (data[0][1] > 0.3) %}
         Maybe relevant

@@ -7,7 +7,7 @@
     <div class="form-group">
         <legend>Upload your labelled data</legend>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-left: -1rem;">
             {{ form.file(class="form-control-file col-md") }}
             {% if form.file.errors %}
                 {% for error in form.file.errors %}

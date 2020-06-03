@@ -276,7 +276,7 @@ class ContextDistribution(Resource):
         self.question = [self.form.sentence.data]
         embeddings = manager.sent_to_embeddings(self.question)
 
-        self.answer = manager.cos_sim(self.question,all_user_label_ids_embeddings)
+        self.answer = manager.cos_sim(self.question,all_user_label_ids_embeddings,25)
         coss = [i[1] for i in self.answer]
         labels_ids = [i[0] for i in self.answer]
         
@@ -296,7 +296,7 @@ class ContextDistribution(Resource):
 
         summ = sum(self.data.values())
         self.data = {k:(utils.float_to_int(v/summ,4)) for k,v in self.data.items()}
-        self.data = sorted(self.data.items(), key = lambda x:x[1], reverse = True)
+        self.data = sorted(self.data.items(), key = lambda x:x[1], reverse = True)[:3]
 
         return make_response(render_template('contextdistribution.html', form= self.form, data = self.data, documents = self.documents,
                                                             question = self.question, answer = self.answer, sentences = sentences))
